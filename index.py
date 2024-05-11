@@ -8,6 +8,5 @@ app = Flask(__name__)
 API_URL = os.environ.get('API_URL')
 
 @app.route('/')
-def home():
-    return 'Home Page Route'
-
+def index():
+    return render_template('main.html')

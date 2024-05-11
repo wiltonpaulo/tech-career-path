@@ -1,0 +1,23 @@
+/* Custom styles */
+
+.container {
+    margin-top: 20px;
+}
+
+table {
+    margin-top: 20px;
+}
+
+.banner {
+    padding: 40px 20px;
+    text-align: center;
+    background: #007bff;
+    color: white;
+}
+
+.logo {
+    max-width: 30px;
+    max-height: 30px;
+    margin-right: 5px;
+}
+
