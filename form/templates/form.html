@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Question to find your tech career path?</title>
+    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            background-color: #f8f9fa;
+        }
+        .quiz-container {
+            background-color: #ffffff;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            margin-top: 50px;
+        }
+        .quiz-title {
+            margin-bottom: 20px;
+            font-weight: bold;
+            color: #343a40;
+        }
+        .form-check-label {
+            font-weight: 500;
+        }
+        .form-check-input:checked ~ .form-check-label {
+            color: #007bff;
+        }
+        .question {
+            display: none;
+        }
+        .question-block {
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="quiz-container">
+            <h1 class="text-center quiz-title">Question to find your tech career path?</h1>
+            <form id="quizForm" action="https://n8n.wpstec.com/webhook-test/f3909671-6771-47ae-9c7f-1d5f5a75e116">
+                <!-- Question 1 -->
+                <div class="form-group question" id="question1">
+                    <div class="question-block">
+                        <label>Do you enjoy problem-solving?</label>
+                    </div>
+                    <div class="question-block">
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="question1" value="yes">
+                            <label class="form-check-label">Yes</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="question1" value="no">
+                            <label class="form-check-label">No</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="question1" value="maybe">
+                            <label class="form-check-label">Maybe</label>
+                        </div>
+                    </div>
+                    <div class="d-flex justify-content-between">
+                        <button type="button" class="btn btn-primary" onclick="showNextQuestion('question2')">Next</button>
+                    </div>
+                </div>
+                <!-- Question 2 -->
+                <div class="form-group question" id="question2">
+                    <div class="question-block">
+                        <label>Do you like working with data?</label>
+                    </div>
+                    <div class="question-block">
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="question2" value="yes">
+                            <label class="form-check-label">Yes</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="question2" value="no">
+                            <label class="form-check-label">No</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="question2" value="maybe">
+                            <label class="form-check-label">Maybe</label>
+                        </div>
+                    </div>
+                    <div class="d-flex justify-content-between">
+                        <button type="button" class="btn btn-secondary" onclick="showPreviousQuestion('question1')">Back</button>
+                        <button type="button" class="btn btn-primary" onclick="showNextQuestion('question3')">Next</button>
+                    </div>
+                </div>
+                <!-- Question 3 -->
+                <div class="form-group question" id="question3">
+                    <div class="question-block">
+                        <label>Do you enjoy working in teams?</label>
+                    </div>
+                    <div class="question-block">
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="question3" value="yes">
+                            <label class="form-check-label">Yes</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="question3" value="no">
+                            <label class="form-check-label">No</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="question3" value="maybe">
+                            <label class="form-check-label">Maybe</label>
+                        </div>
+                    </div>
+                    <div class="d-flex justify-content-between">
+                        <button type="button" class="btn btn-secondary" onclick="showPreviousQuestion('question2')">Back</button>
+                        <button type="button" class="btn btn-primary" onclick="showNextQuestion('question4')">Next</button>
+                    </div>
+                </div>
+                <!-- Question 4 -->
+                <div class="form-group question" id="question4">
+                    <div class="question-block">
+                        <label>Are you interested in learning new programming languages?</label>
+                    </div>
+                    <div class="question-block">
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="question4" value="yes">
+                            <label class="form-check-label">Yes</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="question4" value="no">
+                            <label class="form-check-label">No</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="question4" value="maybe">
+                            <label class="form-check-label">Maybe</label>
+                        </div>
+                    </div>
+                    <div class="d-flex justify-content-between">
+                        <button type="button" class="btn btn-secondary" onclick="showPreviousQuestion('question3')">Back</button>
+                        <button type="button" class="btn btn-primary" onclick="showNextQuestion('question5')">Next</button>
+                    </div>
+                </div>
+                <!-- Question 5 -->
+                <div class="form-group question" id="question5">
+                    <div class="question-block">
+                        <label>Do you prefer front-end or back-end development?</label>
+                    </div>
+                    <div class="question-block">
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="question5" value="front-end">
+                            <label class="form-check-label">Front-end</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="question5" value="back-end">
+                            <label class="form-check-label">Back-end</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="question5" value="both">
+                            <label class="form-check-label">Both</label>
+                        </div>
+                    </div>
+                    <div class="d-flex justify-content-between">
+                        <button type="button" class="btn btn-secondary" onclick="showPreviousQuestion('question4')">Back</button>
+                        <button type="button" class="btn btn-primary" onclick="showSubmitButton()">Submit</button>
+                    </div>
+                </div>
+                <!-- Submit Button -->
+                <div class="form-group text-center submit-btn" id="submitBtn">
+                    <button type="submit" class="btn btn-primary">Submit</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('question1').style.display = 'block';
+
+        function showNextQuestion(nextQuestionId) {
+            var currentQuestion = document.querySelector('.question:not([style*="display: none"])');
+            currentQuestion.style.display = 'none';
+            document.getElementById(nextQuestionId).style.display = 'block';
+        }
+
+        function showPreviousQuestion(previousQuestionId) {
+            var currentQuestion = document.querySelector('.question:not([style*="display: none"])');
+            currentQuestion.style.display = 'none';
+            document.getElementById(previousQuestionId).style.display = 'block';
+        }
+
+        function showSubmitButton() {
+            var currentQuestion = document.querySelector('.question:not([style*="display: none"])');
+            currentQuestion.style.display = 'none';
+            document.getElementById('submitBtn').style.display = 'block';
+        }
+    </script>
+</body>
+</html>
