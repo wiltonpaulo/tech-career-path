@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
+import { createClient } from '@/lib/supabase/client';
 import { ASSESSMENT_QUESTIONS } from '@/lib/assessment/questions';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -23,23 +24,104 @@ import {
   Rocket,
   FileText,
   Briefcase,
-  Zap
+  Zap,
+  Github,
+  Mail,
+  Lock,
+  User as UserIcon
 } from 'lucide-react';
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
 
 export function StepperAssessment() {
+  const supabase = createClient();
+  const [session, setSession] = useState<any>(null);
+  const [authLoading, setAuthLoading] = useState(true);
+  const [authMode, setAuthMode] = useState<'signin' | 'signup'>('signup');
+  const [password, setPassword] = useState('');
+  const [email, setEmail] = useState('');
+  const [error, setError] = useState<string | null>(null);
+
   const [currentStep, setCurrentStep] = useState(0);
   const [answers, setAnswers] = useState<Record<number, number>>({});
-  const [phase, setPhase] = useState<'testing' | 'registration' | 'results' | 'error'>('testing');
+  const [phase, setPhase] = useState<'testing' | 'registration' | 'processing' | 'results' | 'error'>('testing');
+  const [assessmentId, setAssessmentId] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
   const [userData, setUserData] = useState({ name: '', email: '', currentRole: '' });
   const [finalReport, setFinalReport] = useState('');
   const [topMatches, setTopMatches] = useState<string[]>([]);
   const [activeTab, setActiveTab] = useState('summary');
-  
+
   const pdfCaptureRef = useRef<HTMLDivElement>(null);
+
+  // Monitorar Sessão do Supabase
+  useEffect(() => {
+    const getSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      setSession(session);
+      if (session?.user) {
+        setUserData(prev => ({
+          ...prev,
+          name: session.user.user_metadata.full_name || session.user.email?.split('@')[0] || '',
+          email: session.user.email || '',
+        }));
+      }
+      setAuthLoading(false);
+    };
+
+    getSession();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session);
+      if (session?.user) {
+        setUserData(prev => ({
+          ...prev,
+          name: session.user.user_metadata.full_name || session.user.email?.split('@')[0] || '',
+          email: session.user.email || '',
+        }));
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, [supabase]);
+
+  const handleEmailAuth = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    setIsSubmitting(true);
+
+    try {
+      if (authMode === 'signup') {
+        const { error } = await supabase.auth.signUp({
+          email,
+          password,
+          options: {
+            data: { full_name: userData.name },
+            emailRedirectTo: window.location.origin
+          }
+        });
+        if (error) throw error;
+        alert("Account created! Check your email for the confirmation link.");
+      } else {
+        const { error } = await supabase.auth.signInWithPassword({ email, password });
+        if (error) throw error;
+      }
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleGithubLogin = async () => {
+    await supabase.auth.signInWithOAuth({
+      provider: 'github',
+      options: {
+        redirectTo: window.location.origin,
+      }
+    });
+  };
 
   const totalQuestions = ASSESSMENT_QUESTIONS.length;
   const progress = ((currentStep + 1) / totalQuestions) * 100;
@@ -78,6 +160,26 @@ export function StepperAssessment() {
       .map(([area]) => area);
   };
 
+  const startPolling = async (id: string) => {
+    const interval = setInterval(async () => {
+      try {
+        const res = await fetch(`/api/assessment/status?id=${id}`);
+        const data = await res.json();
+        
+        if (data.status === 'COMPLETED') {
+          clearInterval(interval);
+          setFinalReport(data.report);
+          setPhase('results');
+        } else if (data.status === 'FAILED') {
+          clearInterval(interval);
+          setPhase('error');
+        }
+      } catch (err) {
+        console.error("Polling error:", err);
+      }
+    }, 4000);
+  };
+
   const handleRegistration = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     setIsSubmitting(true);
@@ -85,14 +187,24 @@ export function StepperAssessment() {
     setTopMatches(matches);
 
     try {
-      const response = await fetch('/api/generate-report', {
+      const response = await fetch('/api/assessment/complete', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...userData, topMatches: matches }),
+        body: JSON.stringify({ 
+          ...userData, 
+          answers,
+          topMatches: matches 
+        }),
       });
       const data = await response.json();
-      setFinalReport(data.report);
-      setPhase('results');
+      
+      if (data.success) {
+        setAssessmentId(data.assessmentId);
+        setPhase('processing');
+        startPolling(data.assessmentId);
+      } else {
+        setPhase('error');
+      }
     } catch (error) {
       console.error(error);
       setPhase('error');
@@ -150,6 +262,8 @@ export function StepperAssessment() {
   ];
 
   if (phase === 'registration') {
+    const isLogged = !!session;
+
     return (
       <Card className="p-8 md:p-12 bg-slate-900 border-slate-800 max-w-xl mx-auto shadow-2xl rounded-[40px] text-white">
         <div className="text-center mb-10 text-white">
@@ -157,25 +271,117 @@ export function StepperAssessment() {
             <CheckCircle2 className="w-8 h-8" />
           </div>
           <h2 className="text-3xl font-black italic tracking-tighter leading-none uppercase">Analysis Complete</h2>
-          <p className="text-slate-400 text-sm mt-3 italic">Finalize your profile to generate your roadmap.</p>
+          <p className="text-slate-400 text-sm mt-3 italic">
+            {isLogged ? "Finalize your profile to generate your roadmap." : "Sign in to save your results and access the roadmap."}
+          </p>
         </div>
-        <form onSubmit={handleRegistration} className="space-y-6 text-left">
-          <div className="space-y-2">
-            <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 block">Full Name</label>
-            <Input required placeholder="Ex: Wilton Paulo" className="bg-slate-950 border-slate-700 h-12 rounded-xl text-white" value={userData.name} onChange={(e) => setUserData({...userData, name: e.target.value})} />
+
+        {!isLogged ? (
+          <div className="space-y-6">
+            <Button 
+              onClick={handleGithubLogin}
+              className="w-full bg-white hover:bg-slate-200 text-slate-900 h-14 text-base font-black shadow-lg rounded-2xl flex items-center justify-center gap-3 transition-all active:scale-95"
+            >
+              <Github className="w-6 h-6" />
+              Continue with GitHub
+            </Button>
+
+            <div className="relative py-4">
+              <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-slate-800"></div></div>
+              <div className="relative flex justify-center text-[10px] uppercase font-black tracking-widest"><span className="bg-slate-900 px-4 text-slate-500">Or use email</span></div>
+            </div>
+
+            <form onSubmit={handleEmailAuth} className="space-y-4">
+              {authMode === 'signup' && (
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 block text-left">Full Name</label>
+                  <div className="relative">
+                    <UserIcon className="absolute left-4 top-3.5 w-4 h-4 text-slate-500" />
+                    <Input required placeholder="Wilton Paulo" className="bg-slate-950 border-slate-700 h-12 pl-12 rounded-xl text-white" value={userData.name} onChange={(e) => setUserData({...userData, name: e.target.value})} />
+                  </div>
+                </div>
+              )}
+              <div className="space-y-2">
+                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 block text-left">Email Address</label>
+                <div className="relative">
+                  <Mail className="absolute left-4 top-3.5 w-4 h-4 text-slate-500" />
+                  <Input required type="email" placeholder="wilton@wpstec.com" className="bg-slate-950 border-slate-700 h-12 pl-12 rounded-xl text-white" value={email} onChange={(e) => setEmail(e.target.value)} />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 block text-left">Password</label>
+                <div className="relative">
+                  <Lock className="absolute left-4 top-3.5 w-4 h-4 text-slate-500" />
+                  <Input required type="password" placeholder="••••••••" className="bg-slate-950 border-slate-700 h-12 pl-12 rounded-xl text-white" value={password} onChange={(e) => setPassword(e.target.value)} />
+                </div>
+              </div>
+
+              {error && <p className="text-red-500 text-[10px] font-bold uppercase text-center">{error}</p>}
+
+              <Button type="submit" disabled={isSubmitting} className="w-full bg-slate-800 hover:bg-slate-700 h-14 text-sm font-black mt-2 rounded-2xl">
+                {isSubmitting ? <Loader2 className="w-6 h-6 animate-spin" /> : (authMode === 'signup' ? "Create Account" : "Sign In")}
+              </Button>
+
+              <button 
+                type="button"
+                onClick={() => setAuthMode(authMode === 'signin' ? 'signup' : 'signin')}
+                className="w-full text-[10px] text-slate-500 hover:text-blue-400 font-bold uppercase tracking-widest transition-colors"
+              >
+                {authMode === 'signup' ? "Already have an account? Sign In" : "Don't have an account? Sign Up"}
+              </button>
+            </form>
           </div>
-          <div className="space-y-2">
-            <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 block">Work E-mail</label>
-            <Input required type="email" placeholder="wilton@wpstec.com" className="bg-slate-950 border-slate-700 h-12 rounded-xl text-white" value={userData.email} onChange={(e) => setUserData({...userData, email: e.target.value})} />
+        ) : (
+          <form onSubmit={handleRegistration} className="space-y-6 text-left">
+            <div className="space-y-2 opacity-50">
+              <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 block">Full Name</label>
+              <Input disabled className="bg-slate-950 border-slate-700 h-12 rounded-xl text-white cursor-not-allowed" value={userData.name} />
+            </div>
+            <div className="space-y-2 opacity-50">
+              <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 block">Work E-mail</label>
+              <Input disabled className="bg-slate-950 border-slate-700 h-12 rounded-xl text-white cursor-not-allowed" value={userData.email} />
+            </div>
+            <div className="space-y-2">
+              <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 block">Current Background</label>
+              <Input required placeholder="Ex: Sales, Teacher, Student..." className="bg-slate-950 border-slate-700 h-12 rounded-xl text-white" value={userData.currentRole} onChange={(e) => setUserData({...userData, currentRole: e.target.value})} />
+            </div>
+            <Button type="submit" disabled={isSubmitting} className="w-full bg-blue-600 hover:bg-blue-500 h-14 text-base font-black shadow-lg shadow-blue-500/20 mt-4 rounded-2xl">
+              {isSubmitting ? <Loader2 className="w-6 h-6 animate-spin" /> : "Access Final Report"}
+            </Button>
+          </form>
+        )}
+      </Card>
+    );
+  }
+
+  if (phase === 'processing') {
+    return (
+      <Card className="p-8 md:p-12 bg-slate-900 border-slate-800 max-w-xl mx-auto shadow-2xl rounded-[40px] text-white text-center">
+        <div className="relative w-32 h-32 mx-auto mb-10">
+          <div className="absolute inset-0 bg-blue-600/20 rounded-full animate-ping" />
+          <div className="relative p-8 bg-blue-600 rounded-full shadow-2xl shadow-blue-500/40">
+            <Sparkles className="w-12 h-12 text-white animate-pulse" />
           </div>
-          <div className="space-y-2">
-            <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 block">Current Background</label>
-            <Input required placeholder="Ex: Sales, Teacher, Student..." className="bg-slate-950 border-slate-700 h-12 rounded-xl text-white" value={userData.currentRole} onChange={(e) => setUserData({...userData, currentRole: e.target.value})} />
+        </div>
+        <h2 className="text-3xl font-black italic tracking-tighter leading-none uppercase mb-4">Generating Your Report</h2>
+        <p className="text-slate-400 text-sm mb-8 italic">Our AI is analyzing your Professional DNA against the US Market. This usually takes 30-60 seconds.</p>
+        
+        <div className="space-y-4 bg-slate-950/50 p-6 rounded-3xl border border-slate-800">
+          <div className="flex items-center gap-3 text-left">
+            <Loader2 className="w-4 h-4 text-blue-500 animate-spin" />
+            <span className="text-[10px] font-black uppercase tracking-widest text-slate-300">Strategy Matrix Generation</span>
           </div>
-          <Button type="submit" disabled={isSubmitting} className="w-full bg-blue-600 hover:bg-blue-500 h-14 text-base font-black shadow-lg shadow-blue-500/20 mt-4 rounded-2xl">
-            {isSubmitting ? <Loader2 className="w-6 h-6 animate-spin" /> : "Access Final Report"}
-          </Button>
-        </form>
+          <div className="flex items-center gap-3 text-left opacity-50">
+            <Target className="w-4 h-4 text-slate-500" />
+            <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">Market Alignment Check</span>
+          </div>
+          <div className="flex items-center gap-3 text-left opacity-50">
+            <Rocket className="w-4 h-4 text-slate-500" />
+            <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">Roadmap Customization</span>
+          </div>
+        </div>
+        
+        <p className="text-[10px] text-slate-500 mt-10 uppercase font-bold tracking-[0.2em]">Don't close this window</p>
       </Card>
     );
   }
