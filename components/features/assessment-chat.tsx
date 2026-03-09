@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useRef, useEffect } from 'react';
-import { useChat } from 'ai/react';
+import { useChat } from '@ai-sdk/react';
 import { Send, User, Bot, Loader2, Sparkles } from 'lucide-react';
 
 export function AssessmentChat() {
@@ -16,7 +16,7 @@ export function AssessmentChat() {
         content: "Welcome. Please describe your professional background and years of experience."
       }
     ]
-  });
+  } as any) as any;
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -31,7 +31,7 @@ export function AssessmentChat() {
       </div>
 
       <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 space-y-4">
-        {messages.map((m) => (
+        {messages.map((m: any) => (
           <div key={m.id} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
             <div className={`max-w-[80%] p-4 rounded-xl text-sm ${m.role === 'user' ? 'bg-blue-600 text-white' : 'bg-slate-800 text-slate-100 border border-slate-700'}`}>
               <div className="flex items-center gap-2 mb-1 opacity-50 font-bold uppercase text-[10px]">
