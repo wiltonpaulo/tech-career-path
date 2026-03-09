@@ -1,5 +1,7 @@
 # Tech Career Path AI: Bridging the US Tech Talent Gap
 
+[![Vercel Deployment](https://img.shields.io/badge/deployment-vercel-blue)](https://tech-career-path-ai.vercel.app/)
+
 ## 🇺🇸 Project Vision & National Interest
 
 The United States faces a critical shortage of high-skilled labor in key technology sectors. According to recent labor statistics, by 2030, the U.S. could face a deficit of over **1.2 million IT professionals** in areas such as **Cloud Infrastructure, Cybersecurity, Data Engineering, and Artificial Intelligence**.
