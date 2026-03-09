@@ -5,13 +5,22 @@ import { SYSTEM_PROMPT } from '@/lib/ai/gemini';
 export const maxDuration = 30;
 
 export async function POST(req: Request) {
-  const { messages } = await req.json();
+  try {
+    const { messages } = await req.json();
 
-  const result = streamText({
-    model: google('gemini-1.5-pro-latest'),
-    system: SYSTEM_PROMPT,
-    messages,
-  });
+    if (!process.env.GOOGLE_GENERATIVE_AI_API_KEY) {
+      return new Response('Missing GOOGLE_GENERATIVE_AI_API_KEY', { status: 500 });
+    }
 
-  return result.toDataStreamResponse();
+    const result = streamText({
+      model: google('gemini-1.5-flash'),
+      messages,
+      system: SYSTEM_PROMPT,
+    });
+
+    return result.toDataStreamResponse();
+  } catch (error) {
+    console.error('API Error:', error);
+    return new Response('Internal Server Error', { status: 500 });
+  }
 }
