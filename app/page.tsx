@@ -1,91 +1,130 @@
 import React from 'react';
 import Link from 'next/link';
-import { ArrowRight, BrainCircuit, LineChart, ShieldCheck, Zap } from 'lucide-react';
+import { ArrowRight, BrainCircuit, LineChart, ShieldCheck, Zap, Globe, Cpu } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
 
 export default function Home() {
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-50 selection:bg-blue-500/30 font-sans">
-      <main className="relative z-10 container mx-auto px-6 pt-24 pb-32">
-        {/* Navigation */}
-        <nav className="flex items-center justify-between mb-24 max-w-6xl mx-auto">
-          <div className="flex items-center gap-2 font-bold text-xl tracking-tight">
-            <div className="p-2 bg-blue-600 rounded-lg shrink-0">
+    <div className="min-h-screen bg-slate-950 text-slate-50 selection:bg-blue-500/30 font-sans flex flex-col">
+      {/* Background Decor */}
+      <div className="fixed inset-0 z-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-blue-600/10 blur-[120px] rounded-full" />
+        <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-indigo-600/10 blur-[120px] rounded-full" />
+      </div>
+
+      {/* FIXED NAVIGATION HEADER */}
+      <nav className="fixed top-0 left-0 right-0 z-50 border-b border-slate-800/50 bg-slate-950/80 backdrop-blur-xl">
+        <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
+          <div className="flex items-center gap-2.5 font-bold text-xl tracking-tight text-white">
+            <div className="p-2 bg-blue-600 rounded-xl shadow-lg shadow-blue-500/20">
               <BrainCircuit className="w-6 h-6 text-white" />
             </div>
-            <span>Tech Career Path <span className="text-blue-500 underline underline-offset-4 decoration-2">AI</span></span>
+            <span>Tech Career <span className="text-blue-500 italic">Path</span></span>
           </div>
-          <div className="hidden md:flex gap-8 text-sm font-medium text-slate-400">
-            <a href="#" className="hover:text-white transition-colors">National Interest</a>
-            <a href="#" className="hover:text-white transition-colors">Architecture</a>
+          
+          <div className="hidden md:flex gap-8 text-xs font-bold uppercase tracking-widest text-slate-400">
+            <a href="#vision" className="hover:text-white transition-colors">Our Vision</a>
+            <a href="#how-it-works" className="hover:text-white transition-colors">Methodology</a>
+            <a href="#matches" className="hover:text-white transition-colors">Market Demand</a>
           </div>
-          <Link href="/assessment" className="px-5 py-2.5 bg-slate-900 border border-slate-800 rounded-full text-sm font-semibold hover:bg-slate-800 transition-all">
-            Login
-          </Link>
-        </nav>
 
-        {/* Hero Section */}
-        <section className="max-w-4xl mx-auto text-center relative">
-          <div className="absolute top-[-100px] left-1/2 -translate-x-1/2 w-full max-w-2xl h-[400px] bg-blue-600/10 blur-[120px] rounded-full -z-10" />
+          <Link href="/assessment">
+            <Button className="bg-blue-600 hover:bg-blue-500 px-6 rounded-full font-bold text-xs uppercase tracking-tighter text-white border-none">
+              Start Assessment
+            </Button>
+          </Link>
+        </div>
+      </nav>
+
+      {/* HERO SECTION */}
+      <main className="relative z-10 flex-1 flex flex-col items-center pt-44 pb-32 px-6">
+        <section className="max-w-5xl mx-auto text-center relative mb-24">
+          <div className="absolute top-[-100px] left-1/2 -translate-x-1/2 w-full max-w-2xl h-[400px] bg-blue-600/5 blur-[120px] rounded-full -z-10" />
           
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-400 text-xs font-semibold mb-8">
-            <Zap className="w-3 h-3" />
-            <span>AI-Driven Future for US Tech Labor Market</span>
+          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-400 text-[10px] font-black uppercase tracking-widest mb-10 animate-in fade-in slide-in-from-bottom-4 duration-1000">
+            <Zap className="w-3 h-3 fill-current" />
+            <span>Bridging the US Technical Talent Gap</span>
           </div>
           
-          <h1 className="text-5xl md:text-7xl font-extrabold tracking-tight mb-8 leading-[1.1] text-white">
-            Bridge the <span className="bg-gradient-to-r from-blue-400 to-indigo-500 bg-clip-text text-transparent">Skills Gap</span>. Secure Your Future.
+          <h1 className="text-5xl md:text-8xl font-black tracking-tighter mb-8 leading-[0.9] text-white italic animate-in fade-in slide-in-from-bottom-6 duration-1000 delay-200">
+            NAVIGATE THE <br />
+            <span className="bg-gradient-to-r from-blue-400 to-indigo-500 bg-clip-text text-transparent">FUTURE OF TECH.</span>
           </h1>
           
-          <p className="text-lg md:text-xl text-slate-400 mb-12 max-w-2xl mx-auto leading-relaxed">
-            Addressing the US national interest by leveraging AI to steer talent into high-demand tech sectors. Stop guessing. Start assessing.
+          <p className="text-lg md:text-xl text-slate-300 mb-12 max-w-2xl mx-auto leading-relaxed font-medium animate-in fade-in slide-in-from-bottom-8 duration-1000 delay-300">
+            Our proprietary aptitude engine maps your behavior to high-demand careers in the American technology sector.
           </p>
 
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-            <Link href="/assessment" className="group w-full sm:w-auto px-8 py-4 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-bold flex items-center justify-center gap-2 transition-all shadow-lg shadow-blue-500/25">
-              Start Free Assessment
-              <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 animate-in fade-in slide-in-from-bottom-10 duration-1000 delay-500">
+            <Link href="/assessment" className="w-full sm:w-auto">
+              <Button size="lg" className="w-full sm:w-auto h-16 px-10 bg-blue-600 hover:bg-blue-500 text-white rounded-2xl font-black text-lg flex items-center justify-center gap-3 transition-all shadow-2xl shadow-blue-500/25 active:scale-95 border-none">
+                Take Free Assessment
+                <ArrowRight className="w-6 h-6" />
+              </Button>
             </Link>
-            <button className="w-full sm:w-auto px-8 py-4 bg-slate-900/50 backdrop-blur-sm border border-slate-800 hover:border-slate-700 text-slate-300 rounded-xl font-bold transition-all">
-              Watch Demo
-            </button>
+            <Button size="lg" variant="outline" className="w-full sm:w-auto h-16 px-10 bg-slate-900/50 backdrop-blur-sm border-slate-800 hover:border-slate-700 text-slate-200 rounded-2xl font-black text-lg transition-all active:scale-95">
+              Explore Roles
+            </Button>
           </div>
         </section>
 
-        {/* Feature Grid */}
-        <section className="mt-32 grid md:grid-cols-3 gap-8 max-w-6xl mx-auto">
+        {/* STATS SECTION */}
+        <section className="grid md:grid-cols-3 gap-[1px] bg-slate-800/50 border border-slate-800 rounded-[40px] overflow-hidden max-w-6xl w-full mb-32 shadow-2xl">
+          {[
+            { label: "High-Demand Roles", value: "20+", icon: <Cpu className="w-5 h-5 text-blue-500" /> },
+            { label: "Market Vacancies", value: "1.2M", icon: <Globe className="w-5 h-5 text-indigo-500" /> },
+            { label: "Success Matching", value: "98%", icon: <LineChart className="w-5 h-5 text-emerald-500" /> }
+          ].map((stat, i) => (
+            <div key={i} className="bg-slate-950 p-10 flex flex-col items-center text-center group hover:bg-slate-900/30 transition-colors">
+              <div className="mb-4 p-3 bg-slate-900 rounded-2xl border border-slate-800 group-hover:scale-110 transition-transform">{stat.icon}</div>
+              <div className="text-4xl font-black text-white mb-1 tracking-tighter">{stat.value}</div>
+              <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{stat.label}</div>
+            </div>
+          ))}
+        </section>
+
+        {/* FEATURES GRID */}
+        <section id="vision" className="grid md:grid-cols-3 gap-8 max-w-7xl w-full">
           {[
             {
-              icon: <ShieldCheck className="w-6 h-6 text-emerald-400" />,
-              title: "US Talent Alignment",
-              description: "Designed to help students and professionals transition into roles critical to US National Interest."
+              icon: <ShieldCheck className="w-8 h-8 text-emerald-400" />,
+              title: "Aptitude DNA Analysis",
+              description: "Identify your innate technical behaviors and cognitive patterns through our 30-point weighted matrix."
             },
             {
-              icon: <BrainCircuit className="w-6 h-6 text-blue-400" />,
-              title: "Gemini Intelligence",
-              description: "State-of-the-art Generative AI provides hyper-personalized career roadmaps and skill gap analysis."
+              icon: <BrainCircuit className="w-8 h-8 text-blue-400" />,
+              title: "Strategic Steering",
+              description: "Transition from generalist roles to high-growth technical sectors critical to the US infrastructure and economy."
             },
             {
-              icon: <LineChart className="w-6 h-6 text-indigo-400" />,
-              title: "Market Validation",
-              description: "Data-driven insights matching your background with the highest vacancy tech roles in the USA."
+              icon: <LineChart className="w-8 h-8 text-indigo-400" />,
+              title: "Personalized Roadmap",
+              description: "Receive a professional integration plan with verified resources to bridge your current technical skill gaps."
             }
           ].map((feature, i) => (
-            <div key={i} className="p-8 rounded-2xl bg-slate-900/30 border border-slate-800/50 backdrop-blur-sm hover:border-blue-500/30 transition-all group">
-              <div className="mb-6 p-3 bg-slate-950 rounded-xl w-fit border border-slate-800 group-hover:scale-110 transition-transform">
-                {feature.icon}
+            <Card key={i} className="p-10 bg-slate-900/40 border-slate-800/50 backdrop-blur-md hover:border-blue-500/30 transition-all group rounded-[32px] flex flex-col justify-between shadow-xl">
+              <div>
+                <div className="mb-8 p-4 bg-slate-950 rounded-2xl w-fit border border-slate-800 group-hover:scale-110 transition-transform">
+                  {feature.icon}
+                </div>
+                <h3 className="text-2xl font-black mb-4 italic tracking-tight text-white">{feature.title}</h3>
+                <p className="text-slate-300 text-sm leading-relaxed font-medium opacity-90">
+                  {feature.description}
+                </p>
               </div>
-              <h3 className="text-xl font-bold mb-3">{feature.title}</h3>
-              <p className="text-slate-400 text-sm leading-relaxed">
-                {feature.description}
-              </p>
-            </div>
+            </Card>
           ))}
         </section>
       </main>
 
-      <footer className="py-12 border-t border-slate-900 text-center text-slate-600 text-sm relative z-10">
-        <p>&copy; 2024 Tech Career Path AI. All Rights Reserved.</p>
-        <p className="mt-2 font-mono text-xs opacity-50 uppercase tracking-widest">Built for National Interest Excellence</p>
+      <footer className="py-12 border-t border-slate-900/50 text-center relative z-10 bg-slate-950/50 backdrop-blur-sm">
+        <div className="flex items-center justify-center gap-2 font-bold text-slate-400 text-xs mb-4 uppercase tracking-[0.3em]">
+          <BrainCircuit className="w-4 h-4 text-blue-500" /> Tech Path AI
+        </div>
+        <p className="text-slate-500 text-[10px] uppercase tracking-[0.2em] font-black">
+          &copy; 2026 • EMPOWERING THE AMERICAN TECHNOLOGY WORKFORCE
+        </p>
       </footer>
     </div>
   );
