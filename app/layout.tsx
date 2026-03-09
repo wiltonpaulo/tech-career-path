@@ -1,12 +1,15 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
+import { BRAND_CONFIG } from "@/lib/config";
 
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "Tech Career Path AI | US National Interest",
-  description: "AI-driven career assessment for high-demand tech roles in the US.",
+  title: `${BRAND_CONFIG.name} | By ${BRAND_CONFIG.author}`,
+  description: BRAND_CONFIG.tagline,
+  authors: [{ name: BRAND_CONFIG.author, url: BRAND_CONFIG.website }],
+  publisher: BRAND_CONFIG.company,
 };
 
 export default function RootLayout({

@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { ArrowRight, BrainCircuit, LineChart, ShieldCheck, Zap, Globe, Cpu } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { BRAND_CONFIG } from '@/lib/config';
 
 export default function Home() {
   return (
@@ -20,13 +21,13 @@ export default function Home() {
             <div className="p-2 bg-blue-600 rounded-xl shadow-lg shadow-blue-500/20">
               <BrainCircuit className="w-6 h-6 text-white" />
             </div>
-            <span>Tech Career <span className="text-blue-500 italic">Path</span></span>
+            <span>{BRAND_CONFIG.shortCompany} <span className="text-blue-500 italic">Path</span></span>
           </div>
           
           <div className="hidden md:flex gap-8 text-xs font-bold uppercase tracking-widest text-slate-400">
-            <a href="#vision" className="hover:text-white transition-colors">Our Vision</a>
-            <a href="#how-it-works" className="hover:text-white transition-colors">Methodology</a>
-            <a href="#matches" className="hover:text-white transition-colors">Market Demand</a>
+            <Link href="/vision" className="hover:text-white transition-colors text-slate-400">Vision</Link>
+            <Link href="/methodology" className="hover:text-white transition-colors text-slate-400">Methodology</Link>
+            <Link href="/roles" className="hover:text-white transition-colors text-slate-400 italic">Market Demand</Link>
           </div>
 
           <Link href="/assessment">
@@ -42,30 +43,32 @@ export default function Home() {
         <section className="max-w-5xl mx-auto text-center relative mb-24">
           <div className="absolute top-[-100px] left-1/2 -translate-x-1/2 w-full max-w-2xl h-[400px] bg-blue-600/5 blur-[120px] rounded-full -z-10" />
           
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-400 text-[10px] font-black uppercase tracking-widest mb-10 animate-in fade-in slide-in-from-bottom-4 duration-1000">
+          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-400 text-[10px] font-black uppercase tracking-widest mb-10">
             <Zap className="w-3 h-3 fill-current" />
-            <span>Bridging the US Technical Talent Gap</span>
+            <span>Operational Excellence by {BRAND_CONFIG.shortCompany}</span>
           </div>
           
-          <h1 className="text-5xl md:text-8xl font-black tracking-tighter mb-8 leading-[0.9] text-white italic animate-in fade-in slide-in-from-bottom-6 duration-1000 delay-200">
-            NAVIGATE THE <br />
-            <span className="bg-gradient-to-r from-blue-400 to-indigo-500 bg-clip-text text-transparent">FUTURE OF TECH.</span>
+          <h1 className="text-5xl md:text-8xl font-black tracking-tighter mb-8 leading-[0.9] text-white italic">
+            STEER YOUR <br />
+            <span className="bg-gradient-to-r from-blue-400 to-indigo-500 bg-clip-text text-transparent uppercase">Tech Career.</span>
           </h1>
           
-          <p className="text-lg md:text-xl text-slate-300 mb-12 max-w-2xl mx-auto leading-relaxed font-medium animate-in fade-in slide-in-from-bottom-8 duration-1000 delay-300">
-            Our proprietary aptitude engine maps your behavior to high-demand careers in the American technology sector.
+          <p className="text-lg md:text-xl text-slate-300 mb-12 max-w-2xl mx-auto leading-relaxed font-medium">
+            Aligning global talent with the rigorous standards of the US technical landscape through data-driven steering.
           </p>
 
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 animate-in fade-in slide-in-from-bottom-10 duration-1000 delay-500">
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
             <Link href="/assessment" className="w-full sm:w-auto">
-              <Button size="lg" className="w-full sm:w-auto h-16 px-10 bg-blue-600 hover:bg-blue-500 text-white rounded-2xl font-black text-lg flex items-center justify-center gap-3 transition-all shadow-2xl shadow-blue-500/25 active:scale-95 border-none">
-                Take Free Assessment
+              <Button size="lg" className="w-full sm:w-auto h-16 px-10 bg-blue-600 hover:bg-blue-500 text-white rounded-2xl font-black text-lg flex items-center justify-center gap-3 transition-all shadow-2xl shadow-blue-500/25 active:scale-95 border-none uppercase">
+                Take Free Test
                 <ArrowRight className="w-6 h-6" />
               </Button>
             </Link>
-            <Button size="lg" variant="outline" className="w-full sm:w-auto h-16 px-10 bg-slate-900/50 backdrop-blur-sm border-slate-800 hover:border-slate-700 text-slate-200 rounded-2xl font-black text-lg transition-all active:scale-95">
-              Explore Roles
-            </Button>
+            <Link href="/roles" className="w-full sm:w-auto">
+              <Button size="lg" variant="outline" className="w-full sm:w-auto h-16 px-10 bg-slate-900/50 backdrop-blur-sm border-slate-800 hover:border-slate-700 text-slate-200 rounded-2xl font-black text-lg transition-all active:scale-95 uppercase">
+                Market Outlook
+              </Button>
+            </Link>
           </div>
         </section>
 
@@ -74,7 +77,7 @@ export default function Home() {
           {[
             { label: "High-Demand Roles", value: "20+", icon: <Cpu className="w-5 h-5 text-blue-500" /> },
             { label: "Market Vacancies", value: "1.2M", icon: <Globe className="w-5 h-5 text-indigo-500" /> },
-            { label: "Success Matching", value: "98%", icon: <LineChart className="w-5 h-5 text-emerald-500" /> }
+            { label: "Precision Matching", value: "98%", icon: <LineChart className="w-5 h-5 text-emerald-500" /> }
           ].map((stat, i) => (
             <div key={i} className="bg-slate-950 p-10 flex flex-col items-center text-center group hover:bg-slate-900/30 transition-colors">
               <div className="mb-4 p-3 bg-slate-900 rounded-2xl border border-slate-800 group-hover:scale-110 transition-transform">{stat.icon}</div>
@@ -89,18 +92,18 @@ export default function Home() {
           {[
             {
               icon: <ShieldCheck className="w-8 h-8 text-emerald-400" />,
-              title: "Aptitude DNA Analysis",
-              description: "Identify your innate technical behaviors and cognitive patterns through our 30-point weighted matrix."
+              title: "Security-by-Design",
+              description: "Every career recommendation accounts for the rigorous compliance and security standards of the US market."
             },
             {
               icon: <BrainCircuit className="w-8 h-8 text-blue-400" />,
-              title: "Strategic Steering",
-              description: "Transition from generalist roles to high-growth technical sectors critical to the US infrastructure and economy."
+              title: "Operational Rigor",
+              description: "Mapping cognitive DNA to roles that demand excellence in cloud, automation, and infrastructure resilience."
             },
             {
               icon: <LineChart className="w-8 h-8 text-indigo-400" />,
-              title: "Personalized Roadmap",
-              description: "Receive a professional integration plan with verified resources to bridge your current technical skill gaps."
+              title: "Integration Roadmap",
+              description: "A phased professional integration plan designed by industry veterans to bridge critical skill gaps."
             }
           ].map((feature, i) => (
             <Card key={i} className="p-10 bg-slate-900/40 border-slate-800/50 backdrop-blur-md hover:border-blue-500/30 transition-all group rounded-[32px] flex flex-col justify-between shadow-xl">
@@ -108,7 +111,7 @@ export default function Home() {
                 <div className="mb-8 p-4 bg-slate-950 rounded-2xl w-fit border border-slate-800 group-hover:scale-110 transition-transform">
                   {feature.icon}
                 </div>
-                <h3 className="text-2xl font-black mb-4 italic tracking-tight text-white">{feature.title}</h3>
+                <h3 className="text-2xl font-black mb-4 italic tracking-tight text-white uppercase">{feature.title}</h3>
                 <p className="text-slate-300 text-sm leading-relaxed font-medium opacity-90">
                   {feature.description}
                 </p>
@@ -119,12 +122,17 @@ export default function Home() {
       </main>
 
       <footer className="py-12 border-t border-slate-900/50 text-center relative z-10 bg-slate-950/50 backdrop-blur-sm">
-        <div className="flex items-center justify-center gap-2 font-bold text-slate-400 text-xs mb-4 uppercase tracking-[0.3em]">
-          <BrainCircuit className="w-4 h-4 text-blue-500" /> Tech Path AI
+        <div className="flex flex-col items-center gap-2 px-6">
+          <div className="flex items-center justify-center gap-2 font-bold text-slate-400 text-xs mb-2 uppercase tracking-[0.3em]">
+            <BrainCircuit className="w-4 h-4 text-blue-500" /> {BRAND_CONFIG.name}
+          </div>
+          <p className="text-slate-500 text-[10px] uppercase tracking-[0.2em] font-medium">
+            Developed by <span className="text-slate-300 font-black">{BRAND_CONFIG.author}</span> • {BRAND_CONFIG.company}
+          </p>
+          <p className="text-slate-600 text-[9px] uppercase tracking-widest mt-2 font-bold max-w-xl leading-relaxed">
+            &copy; {BRAND_CONFIG.year} • {BRAND_CONFIG.tagline}
+          </p>
         </div>
-        <p className="text-slate-500 text-[10px] uppercase tracking-[0.2em] font-black">
-          &copy; 2026 • EMPOWERING THE AMERICAN TECHNOLOGY WORKFORCE
-        </p>
       </footer>
     </div>
   );
