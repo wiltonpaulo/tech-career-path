@@ -108,14 +108,10 @@ export function StepperAssessment() {
   const scrollToSection = (id: string) => {
     const element = document.getElementById(id);
     if (element) {
-      const offset = 100;
-      const bodyRect = document.body.getBoundingClientRect().top;
-      const elementRect = element.getBoundingClientRect().top;
-      const elementPosition = elementRect - bodyRect;
-      const offsetPosition = elementPosition - offset;
-
+      const offset = 120;
+      const elementPosition = element.getBoundingClientRect().top + window.pageYOffset;
       window.scrollTo({
-        top: offsetPosition,
+        top: elementPosition - offset,
         behavior: 'smooth'
       });
       setActiveSection(id);
@@ -179,41 +175,43 @@ export function StepperAssessment() {
 
   if (phase === 'results') {
     return (
-      <div className="w-full max-w-[1600px] mx-auto animate-in fade-in duration-700 pb-20 relative px-4 lg:px-12">
-        {/* HEADER AREA */}
-        <div className="flex flex-col md:flex-row items-center justify-between gap-6 bg-slate-900 border border-slate-800 p-6 rounded-[32px] mb-12 shadow-2xl">
+      <div className="w-full max-w-[1600px] mx-auto animate-in fade-in duration-700 pb-20 relative px-4 lg:px-8">
+        
+        {/* HEADER - FIXED ABOVE EVERYTHING */}
+        <div className="flex flex-col md:flex-row items-center justify-between gap-6 bg-slate-900 border border-slate-800 p-6 rounded-[24px] mb-8 shadow-2xl sticky top-24 z-30 backdrop-blur-md bg-slate-900/90">
           <div className="flex items-center gap-4">
             <div className="p-3 bg-blue-600 rounded-xl shadow-lg">
               <GraduationCap className="w-6 h-6 text-white" />
             </div>
             <div>
               <h1 className="text-xl font-black text-white leading-none mb-1">{userData.name.toUpperCase()}</h1>
-              <p className="text-blue-500 font-bold text-[10px] uppercase tracking-widest opacity-80">Strategic Career Integration Report</p>
+              <p className="text-blue-500 font-bold text-[10px] uppercase tracking-widest opacity-80">Strategic Integration Report</p>
             </div>
           </div>
-          <div className="flex items-center gap-4">
-            <Button onClick={() => window.print()} variant="outline" className="h-10 border-slate-700 bg-slate-950 text-slate-300 hover:text-white rounded-xl shadow-lg">
-              <Download className="w-4 h-4 mr-2" /> PDF
-            </Button>
-          </div>
+          <Button onClick={() => window.print()} variant="outline" className="h-10 border-slate-700 bg-slate-950 text-slate-300 hover:text-white rounded-xl">
+            <Download className="w-4 h-4 mr-2" /> Export Strategic PDF
+          </Button>
         </div>
 
-        <div className="flex flex-col lg:flex-row gap-8 items-start relative">
-          {/* FLOATING SIDEBAR INDEX - FIXED WIDTH BUT DOES NOT SQUEEZE */}
-          <aside className="hidden lg:block w-64 sticky top-28 shrink-0 space-y-6">
+        {/* TWO COLUMN GRID */}
+        <div className="grid lg:grid-cols-[320px_1fr] gap-10 items-start">
+          
+          {/* SIDEBAR - TRULY STICKY */}
+          <aside className="hidden lg:flex flex-col gap-6 sticky top-[180px] h-fit">
             <div className="bg-slate-900 border border-slate-800 rounded-[24px] p-2 shadow-2xl">
-              <div className="flex items-center gap-2 mb-2 p-4 pb-2">
-                <ListIcon className="w-4 h-4 text-slate-500" />
-                <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Index</span>
+              <div className="p-4 pb-2 border-b border-slate-800/50 mb-2">
+                <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-2">
+                  <ListIcon className="w-3 h-3" /> Report Content
+                </span>
               </div>
-              <nav className="space-y-1">
+              <nav className="space-y-1 p-1">
                 {sections.map((sec) => (
                   <button
                     key={sec.id}
                     onClick={() => scrollToSection(sec.id)}
-                    className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-xs font-bold transition-all ${
+                    className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold transition-all ${
                       activeSection === sec.id 
-                        ? "bg-blue-600 text-white shadow-lg" 
+                        ? "bg-blue-600 text-white shadow-lg scale-[1.02]" 
                         : "text-slate-500 hover:text-white hover:bg-slate-800"
                     }`}
                   >
@@ -224,70 +222,72 @@ export function StepperAssessment() {
               </nav>
             </div>
 
-            <div className="bg-slate-900 border border-slate-800 rounded-[24px] p-6 shadow-xl">
-              <p className="text-[10px] text-blue-400 font-bold uppercase mb-4 tracking-tighter">Matches</p>
-              <div className="space-y-3">
+            <div className="bg-blue-600/5 border border-blue-500/20 rounded-[24px] p-6 shadow-xl">
+              <p className="text-[9px] text-blue-400 font-black uppercase mb-4 tracking-widest">Matched Career Paths</p>
+              <div className="space-y-4">
                 {topMatches.map((m, i) => (
-                  <div key={i} className="flex items-center justify-between">
-                    <span className="text-[10px] font-black text-white">{m}</span>
-                    <div className={`w-1.5 h-1.5 rounded-full ${i === 0 ? "bg-blue-500" : "bg-slate-700"}`} />
+                  <div key={i} className="flex items-center gap-3">
+                    <div className={`w-1.5 h-1.5 rounded-full ${i === 0 ? "bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.5)]" : "bg-slate-700"}`} />
+                    <span className="text-[11px] font-bold text-white/90">{m}</span>
                   </div>
                 ))}
               </div>
             </div>
           </aside>
 
-          {/* MASSIVE CONTENT AREA */}
-          <Card className="flex-1 p-8 md:p-16 lg:p-24 bg-slate-900 border-slate-800 shadow-2xl relative min-h-screen rounded-[40px] overflow-hidden">
-            <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-blue-600 via-indigo-500 to-emerald-500" />
-            
-            <div className="prose prose-invert prose-blue max-w-none text-slate-300">
-              {finalReport.split('\n').map((line, i) => {
-                let sectionId = "";
-                if (line.startsWith('## 1.')) sectionId = "summary";
-                if (line.startsWith('## 2.')) sectionId = "market";
-                if (line.startsWith('## 3.')) sectionId = "gaps";
-                if (line.startsWith('## 4.')) sectionId = "roadmap";
-                if (line.startsWith('## 5.')) sectionId = "resources";
+          {/* MAIN REPORT - WIDE AND CLEAN */}
+          <div className="space-y-8">
+            <Card className="p-8 md:p-16 lg:p-24 bg-slate-900 border-slate-800 shadow-2xl relative min-h-screen rounded-[40px] overflow-hidden">
+              <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-blue-600 via-indigo-500 to-emerald-500" />
+              
+              <div className="prose prose-invert prose-blue max-w-none text-slate-300">
+                {finalReport.split('\n').map((line, i) => {
+                  let sectionId = "";
+                  if (line.startsWith('## 1.')) sectionId = "summary";
+                  if (line.startsWith('## 2.')) sectionId = "market";
+                  if (line.startsWith('## 3.')) sectionId = "gaps";
+                  if (line.startsWith('## 4.')) sectionId = "roadmap";
+                  if (line.startsWith('## 5.')) sectionId = "resources";
 
-                if (sectionId) {
-                  return (
-                    <div key={i} id={sectionId} className="pt-16 mb-10 border-b border-slate-800 pb-6 first:pt-0">
-                      <div className="flex items-center gap-4">
-                        <div className="p-3 bg-blue-600/10 rounded-2xl border border-blue-500/20">
-                          {React.createElement(sections.find(s => s.id === sectionId)?.icon || Sparkles, { className: "w-6 h-6 text-blue-500" })}
+                  if (sectionId) {
+                    return (
+                      <div key={i} id={sectionId} className="pt-16 mb-10 border-b border-slate-800 pb-6 first:pt-0 scroll-mt-40">
+                        <div className="flex items-center gap-4">
+                          <div className="p-3 bg-blue-600/10 rounded-2xl border border-blue-500/20">
+                            {React.createElement(sections.find(s => s.id === sectionId)?.icon || Sparkles, { className: "w-6 h-6 text-blue-500" })}
+                          </div>
+                          <h2 className="text-2xl md:text-4xl font-black text-white uppercase tracking-tighter m-0 italic">
+                            {line.replace(/## \d\./, '').trim()}
+                          </h2>
                         </div>
-                        <h2 className="text-2xl md:text-3xl font-black text-white uppercase tracking-tighter m-0">
-                          {line.replace(/## \d\./, '').trim()}
-                        </h2>
                       </div>
-                    </div>
-                  );
-                }
+                    );
+                  }
 
-                if (line.startsWith('# ')) return null;
+                  if (line.startsWith('# ')) return null;
 
-                const formattedLine = line.replace(/\*\*(.*?)\*\*/g, '<strong class="text-white font-black">$1</strong>');
-                const linkMatch = line.match(/\[(.*?)\]\((.*?)\)/);
-                
-                if (linkMatch) {
+                  const formattedLine = line.replace(/\*\*(.*?)\*\*/g, '<strong class="text-white font-black">$1</strong>');
+                  const linkMatch = line.match(/\[(.*?)\]\((.*?)\)/);
+                  
+                  if (linkMatch) {
+                    return (
+                      <div key={i} className="my-8">
+                        <a href={linkMatch[2]} target="_blank" className="inline-flex items-center gap-3 px-8 py-4 bg-blue-600 text-white rounded-2xl text-base font-bold hover:bg-blue-500 transition-all shadow-xl shadow-blue-500/20 no-underline hover:scale-[1.02] active:scale-95">
+                          <ExternalLink className="w-5 h-5" /> {linkMatch[1]}
+                        </a>
+                      </div>
+                    );
+                  }
+
+                  if (line.trim() === '') return <div key={i} className="h-4" />;
+
                   return (
-                    <div key={i} className="my-6">
-                      <a href={linkMatch[2]} target="_blank" className="inline-flex items-center gap-3 px-6 py-3 bg-blue-600 text-white rounded-2xl text-sm font-bold hover:bg-blue-500 transition-all shadow-lg shadow-blue-500/20 no-underline">
-                        <ExternalLink className="w-4 h-4" /> {linkMatch[1]}
-                      </a>
-                    </div>
+                    <p key={i} className="mb-8 leading-relaxed text-slate-300 text-lg md:text-xl opacity-90 text-balance" dangerouslySetInnerHTML={{ __html: formattedLine }} />
                   );
-                }
-
-                if (line.trim() === '') return <div key={i} className="h-4" />;
-
-                return (
-                  <p key={i} className="mb-6 leading-relaxed text-slate-300 text-lg opacity-90 text-balance" dangerouslySetInnerHTML={{ __html: formattedLine }} />
-                );
-              })}
-            </div>
-          </Card>
+                })}
+              </div>
+            </Card>
+          </div>
         </div>
       </div>
     );
