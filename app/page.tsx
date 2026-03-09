@@ -1,11 +1,25 @@
-import React from 'react';
+'use client';
+
+import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { ArrowRight, BrainCircuit, LineChart, ShieldCheck, Zap, Globe, Cpu } from 'lucide-react';
+import { ArrowRight, BrainCircuit, LineChart, ShieldCheck, Zap, Globe, Cpu, LayoutDashboard } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { BRAND_CONFIG } from '@/lib/config';
+import { createClient } from '@/lib/supabase/client';
 
 export default function Home() {
+  const supabase = createClient();
+  const [user, setUser] = useState<any>(null);
+
+  useEffect(() => {
+    const getUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      setUser(user);
+    };
+    getUser();
+  }, [supabase]);
+
   return (
     <div className="min-h-screen bg-slate-950 text-slate-50 selection:bg-blue-500/30 font-sans flex flex-col">
       {/* Background Decor */}
@@ -14,36 +28,12 @@ export default function Home() {
         <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-indigo-600/10 blur-[120px] rounded-full" />
       </div>
 
-      {/* FIXED NAVIGATION HEADER */}
-      <nav className="fixed top-0 left-0 right-0 z-50 border-b border-slate-800/50 bg-slate-950/80 backdrop-blur-xl">
-        <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
-          <div className="flex items-center gap-2.5 font-bold text-xl tracking-tight text-white">
-            <div className="p-2 bg-blue-600 rounded-xl shadow-lg shadow-blue-500/20">
-              <BrainCircuit className="w-6 h-6 text-white" />
-            </div>
-            <span>{BRAND_CONFIG.shortCompany} <span className="text-blue-500 italic">Path</span></span>
-          </div>
-          
-          <div className="hidden md:flex gap-8 text-xs font-bold uppercase tracking-widest text-slate-400">
-            <Link href="/vision" className="hover:text-white transition-colors text-slate-400">Vision</Link>
-            <Link href="/methodology" className="hover:text-white transition-colors text-slate-400">Methodology</Link>
-            <Link href="/roles" className="hover:text-white transition-colors text-slate-400 italic">Market Demand</Link>
-          </div>
-
-          <Link href="/assessment">
-            <Button className="bg-blue-600 hover:bg-blue-500 px-6 rounded-full font-bold text-xs uppercase tracking-tighter text-white border-none">
-              Start Assessment
-            </Button>
-          </Link>
-        </div>
-      </nav>
-
       {/* HERO SECTION */}
-      <main className="relative z-10 flex-1 flex flex-col items-center pt-44 pb-32 px-6">
+      <main className="relative z-10 flex-1 flex flex-col items-center pt-24 pb-32 px-6">
         <section className="max-w-5xl mx-auto text-center relative mb-24">
           <div className="absolute top-[-100px] left-1/2 -translate-x-1/2 w-full max-w-2xl h-[400px] bg-blue-600/5 blur-[120px] rounded-full -z-10" />
           
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-400 text-[10px] font-black uppercase tracking-widest mb-10">
+          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-400 text-[10px] font-black uppercase tracking-widest mb-10 mt-12">
             <Zap className="w-3 h-3 fill-current" />
             <span>Operational Excellence by {BRAND_CONFIG.shortCompany}</span>
           </div>
@@ -58,12 +48,22 @@ export default function Home() {
           </p>
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-            <Link href="/assessment" className="w-full sm:w-auto">
-              <Button size="lg" className="w-full sm:w-auto h-16 px-10 bg-blue-600 hover:bg-blue-500 text-white rounded-2xl font-black text-lg flex items-center justify-center gap-3 transition-all shadow-2xl shadow-blue-500/25 active:scale-95 border-none uppercase">
-                Take Free Test
-                <ArrowRight className="w-6 h-6" />
-              </Button>
-            </Link>
+            {user ? (
+              <Link href="/dashboard" className="w-full sm:w-auto">
+                <Button size="lg" className="w-full sm:w-auto h-16 px-10 bg-indigo-600 hover:bg-indigo-500 text-white rounded-2xl font-black text-lg flex items-center justify-center gap-3 transition-all shadow-2xl shadow-indigo-500/25 active:scale-95 border-none uppercase">
+                  My Dashboard
+                  <LayoutDashboard className="w-6 h-6" />
+                </Button>
+              </Link>
+            ) : (
+              <Link href="/assessment" className="w-full sm:w-auto">
+                <Button size="lg" className="w-full sm:w-auto h-16 px-10 bg-blue-600 hover:bg-blue-500 text-white rounded-2xl font-black text-lg flex items-center justify-center gap-3 transition-all shadow-2xl shadow-blue-500/25 active:scale-95 border-none uppercase">
+                  Take Free Test
+                  <ArrowRight className="w-6 h-6" />
+                </Button>
+              </Link>
+            )}
+            
             <Link href="/roles" className="w-full sm:w-auto">
               <Button size="lg" variant="outline" className="w-full sm:w-auto h-16 px-10 bg-slate-900/50 backdrop-blur-sm border-slate-800 hover:border-slate-700 text-slate-200 rounded-2xl font-black text-lg transition-all active:scale-95 uppercase">
                 Market Outlook
@@ -112,7 +112,7 @@ export default function Home() {
                   {feature.icon}
                 </div>
                 <h3 className="text-2xl font-black mb-4 italic tracking-tight text-white uppercase">{feature.title}</h3>
-                <p className="text-slate-300 text-sm leading-relaxed font-medium opacity-90">
+                <p className="text-slate-300 text-sm leading-relaxed font-medium opacity-90 text-left">
                   {feature.description}
                 </p>
               </div>
