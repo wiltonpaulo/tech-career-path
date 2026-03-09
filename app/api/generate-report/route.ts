@@ -70,7 +70,7 @@ export async function POST(req: Request) {
     `;
 
     const { text } = await generateText({
-      model: google('gemini-2.0-flash-lite-preview-02-05'),
+      model: google('gemini-2.5-flash-lite'),
       prompt: prompt,
     });
 
