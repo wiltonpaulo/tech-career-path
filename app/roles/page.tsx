@@ -15,7 +15,8 @@ import {
   ArrowUpDown,
   Zap,
   TrendingUp,
-  Award
+  Award,
+  Search
 } from 'lucide-react';
 
 export default function MarketExplorer() {
