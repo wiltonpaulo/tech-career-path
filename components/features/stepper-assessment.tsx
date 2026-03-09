@@ -55,6 +55,17 @@ export function StepperAssessment() {
 
   const pdfCaptureRef = useRef<HTMLDivElement>(null);
 
+  // Verificar ID na URL ao carregar
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const id = params.get('id');
+    if (id) {
+      setAssessmentId(id);
+      setPhase('processing'); // Começa em processamento enquanto carrega
+      startPolling(id);
+    }
+  }, []);
+
   // Monitorar Sessão do Supabase
   useEffect(() => {
     const getSession = async () => {

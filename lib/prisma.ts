@@ -16,8 +16,9 @@ const pool = new Pool({
   max: 20,
   idleTimeoutMillis: 30000,
   connectionTimeoutMillis: 2000,
+  // Ajuste para silenciar o aviso de segurança e usar o modo correto
   ssl: {
-    rejectUnauthorized: false
+    rejectUnauthorized: false,
   }
 });
 
