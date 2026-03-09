@@ -16,7 +16,7 @@ export async function POST(req: Request) {
     return createDataStreamResponse({
       execute: (dataStream) => {
         const result = streamText({
-          // Atualizado para o modelo de última geração solicitado
+          // Modelo atualizado conforme exigência do ambiente
           model: google('gemini-2.5-flash-lite'), 
           messages,
           system: SYSTEM_PROMPT,
