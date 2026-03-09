@@ -133,7 +133,7 @@ export const ASSESSMENT_QUESTIONS: Question[] = [
     category: 'Interest',
     text: "Which of these devices fascinates you more?",
     options: [
-      { label: "A self-driving car's sensor and control system.", weights: { 'Embedded/IoT': 15, 'AI/ML': 10, 'C-Level/PM': 2 } },
+      { label: "A self-driving car's sensor and control system.", weights: { 'Embedded/IoT': 15, 'AI/ML': 10, 'Technical PM': 2 } },
       { label: "The infrastructure that powers a global social network.", weights: { 'Cloud Engineer': 15, 'Solutions Architect': 10, 'SysAdmin': 5 } },
       { label: "A cryptocurrency's decentralized ledger system.", weights: { 'Blockchain': 15, 'Backend': 10, 'Data Engineer': 5 } }
     ]
