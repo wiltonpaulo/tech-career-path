@@ -10,12 +10,12 @@
     "format": "prettier --write ."
   },
   "dependencies": {
-    "@ai-sdk/google": "^1.1.9",
-    "ai": "^6.0.116",
+    "@ai-sdk/google": "1.1.9",
+    "ai": "4.1.45",
     "clsx": "^2.1.1",
     "framer-motion": "^12.0.0",
     "lucide-react": "^0.475.0",
-    "next": "^15.5.12",
+    "next": "15.1.4",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "tailwind-merge": "^2.3.0",
@@ -32,6 +32,6 @@
     "prettier": "^3.2.5",
     "prettier-plugin-tailwindcss": "^0.5.14",
     "tailwindcss": "^3.4.3",
-    "typescript": "^5.4.5"
+    "typescript": "^5.7.0"
   }
 }
