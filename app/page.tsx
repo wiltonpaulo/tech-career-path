@@ -2,28 +2,21 @@ import React from 'react';
 import Link from 'next/link';
 import { ArrowRight, BrainCircuit, LineChart, ShieldCheck, Zap } from 'lucide-react';
 
-export default function LandingPage() {
+export default function Home() {
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-50 selection:bg-blue-500/30">
-      {/* Background Decor */}
-      <div className="fixed inset-0 z-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-blue-600/10 blur-[120px] rounded-full" />
-        <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-indigo-600/10 blur-[120px] rounded-full" />
-      </div>
-
+    <div className="min-h-screen bg-slate-950 text-slate-50 selection:bg-blue-500/30 font-sans">
       <main className="relative z-10 container mx-auto px-6 pt-24 pb-32">
         {/* Navigation */}
-        <nav className="flex items-center justify-between mb-24">
+        <nav className="flex items-center justify-between mb-24 max-w-6xl mx-auto">
           <div className="flex items-center gap-2 font-bold text-xl tracking-tight">
-            <div className="p-2 bg-blue-600 rounded-lg">
+            <div className="p-2 bg-blue-600 rounded-lg shrink-0">
               <BrainCircuit className="w-6 h-6 text-white" />
             </div>
-            <span>Tech Career Path <span className="text-blue-500 underline underline-offset-4">AI</span></span>
+            <span>Tech Career Path <span className="text-blue-500 underline underline-offset-4 decoration-2">AI</span></span>
           </div>
           <div className="hidden md:flex gap-8 text-sm font-medium text-slate-400">
             <a href="#" className="hover:text-white transition-colors">National Interest</a>
             <a href="#" className="hover:text-white transition-colors">Architecture</a>
-            <a href="#" className="hover:text-white transition-colors">Documentation</a>
           </div>
           <Link href="/assessment" className="px-5 py-2.5 bg-slate-900 border border-slate-800 rounded-full text-sm font-semibold hover:bg-slate-800 transition-all">
             Login
@@ -31,13 +24,15 @@ export default function LandingPage() {
         </nav>
 
         {/* Hero Section */}
-        <section className="max-w-4xl mx-auto text-center">
+        <section className="max-w-4xl mx-auto text-center relative">
+          <div className="absolute top-[-100px] left-1/2 -translate-x-1/2 w-full max-w-2xl h-[400px] bg-blue-600/10 blur-[120px] rounded-full -z-10" />
+          
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-400 text-xs font-semibold mb-8">
             <Zap className="w-3 h-3" />
             <span>AI-Driven Future for US Tech Labor Market</span>
           </div>
           
-          <h1 className="text-5xl md:text-7xl font-extrabold tracking-tight mb-8 leading-[1.1]">
+          <h1 className="text-5xl md:text-7xl font-extrabold tracking-tight mb-8 leading-[1.1] text-white">
             Bridge the <span className="bg-gradient-to-r from-blue-400 to-indigo-500 bg-clip-text text-transparent">Skills Gap</span>. Secure Your Future.
           </h1>
           
@@ -57,7 +52,7 @@ export default function LandingPage() {
         </section>
 
         {/* Feature Grid */}
-        <section className="mt-32 grid md:grid-cols-3 gap-8">
+        <section className="mt-32 grid md:grid-cols-3 gap-8 max-w-6xl mx-auto">
           {[
             {
               icon: <ShieldCheck className="w-6 h-6 text-emerald-400" />,
