@@ -4,21 +4,23 @@ import { Pool } from "pg";
 
 const globalForPrisma = global as unknown as { prisma: PrismaClient };
 
-// Garantindo que o Node ignore erros de certificado auto-assinado localmente
-if (process.env.NODE_ENV === 'development') {
+// Força a aceitação de certificados em desenvolvimento em nível global do processo
+if (process.env.NODE_ENV !== 'production') {
   process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
 }
 
-const connectionString = process.env.POSTGRES_PRISMA_URL;
+let connectionString = process.env.POSTGRES_PRISMA_URL || '';
+
+// Remove parâmetros de SSL da string para evitar conflitos com a config do Pool
+if (connectionString.includes('sslmode=')) {
+  connectionString = connectionString.replace(/sslmode=[^&]+/, 'sslmode=no-verify');
+}
 
 const pool = new Pool({ 
   connectionString,
-  max: 20,
-  idleTimeoutMillis: 30000,
-  connectionTimeoutMillis: 2000,
-  // Ajuste para silenciar o aviso de segurança e usar o modo correto
+  max: 10,
   ssl: {
-    rejectUnauthorized: false,
+    rejectUnauthorized: false
   }
 });
 
@@ -28,7 +30,7 @@ export const prisma =
   globalForPrisma.prisma ||
   new PrismaClient({
     adapter,
-    log: ["query", "error", "warn"],
+    // log: ["query", "error", "warn"],
   });
 
 if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = prisma;
