@@ -3,50 +3,74 @@ import { generateText } from 'ai';
 
 export const maxDuration = 60;
 
+const MOCK_REPORT = `
+# Tech Career Strategic Report: Wilton Paulo
+      
+## 1. Executive Summary
+Your profile as a **Cloud Engineer** and **Solutions Architect** aligns perfectly with current US market demands. Your technical leadership background and MBA credentials suggest a high potential for Senior Infrastructure roles in the American ecosystem.
+
+## 2. Top Technical Skills
+- **Infrastructure as Code (Terraform):** ⭐⭐⭐⭐⭐
+- **Kubernetes Orchestration:** ⭐⭐⭐⭐
+- **Cloud Security (DevSecOps):** ⭐⭐⭐⭐
+- **CI/CD Pipeline Architecture:** ⭐⭐⭐⭐⭐
+
+## 3. US Market Opportunity
+- **Current Demand:** Extreme Shortage.
+- **💰 Salary Range:** $145,000 - $210,000 per year base.
+- **📍 Priority Hubs:** Austin, TX • Charlotte, NC • Seattle, WA.
+- **Growth:** Rapid expansion into AI-driven automation (MLOps).
+
+## 4. Strategic 6-Month Roadmap
+- **Phase 1 (Foundation):** Mastery of Multi-Cloud Architecture (AWS/Azure).
+- **Phase 2 (Execution):** Portfolio building using Terraform and advanced CI/CD.
+- **Phase 3 (Integration):** Professional Certification (GCP Professional Architect).
+
+## 5. Recommended Strategic Project
+- **🚀 Project Title:** Global Scalable Infrastructure with Self-Healing.
+- **Description:** Build a multi-region VPC environment using Terraform, managed by Kubernetes, with automated failover and SOC2-compliant security layers.
+- **Goal:** Demonstrate seniority in Operational Excellence.
+
+## 6. Top Recommended Resources
+- [AWS Skill Builder](https://explore.skillbuilder.aws/) - Official Enterprise Learning.
+- [HashiCorp Certification](https://www.hashicorp.com/certification) - US Gold Standard for Automation.
+
+## 7. Strategic Advice
+Focus on High-Availability patterns. In the US market, system resilience is the primary metric for senior career advancement and salary negotiation.
+`;
+
 export async function POST(req: Request) {
   try {
-    const { name, currentRole, topMatches } = await req.json();
+    const { name, currentRole, topMatches, useMock } = await req.json();
+
+    if (useMock || process.env.NODE_ENV === 'development') {
+      return new Response(JSON.stringify({ report: MOCK_REPORT }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
 
     const prompt = `
-      Act as a Senior US Tech Career Strategist and Talent Pipeline Expert. 
-      Generate a HIGHLY PROFESSIONAL "Tech Career Integration Report" for ${name}, who is transitioning from "${currentRole}".
-      
-      The proprietary assessment identified these Top 3 Target Roles: ${topMatches.join(', ')}.
+      Act as a Senior US Tech Career Strategist. 
+      Generate a professional "Career Integration Report" for ${name}, transitioning from "${currentRole}".
+      Matches: ${topMatches.join(', ')}.
 
-      STRUCTURE THE DOCUMENT AS FOLLOWS:
+      STRUCTURE:
+      1. Executive Summary
+      2. Top Technical Skills (Include 4 skills with star ratings ⭐ from 1 to 5)
+      3. US Market Opportunity (Include "💰 Salary Range:" and "📍 Priority Hubs:")
+      4. Strategic 6-Month Roadmap
+      5. Recommended Strategic Project (Include "🚀 Project Title:", "Description:", and "Goal:")
+      6. Top Recommended Resources (Include URLs)
+      7. Strategic Advice
 
-      # TECH CAREER STRATEGIC REPORT: ${name.toUpperCase()}
-      
-      ## 1. EXECUTIVE SUMMARY
-      Analyze why these roles match the behavioral profile and technical aptitude identified. Focus on transferable skills.
-
-      ## 2. US MARKET OPPORTUNITY & OUTLOOK
-      - Demand for ${topMatches[0]}: Provide brief statistics on vacancies and salary ranges in hubs like Austin, TX or Charlotte, NC.
-      - Career Growth Path: Potential for senior leadership or specialist roles in 3-5 years.
-
-      ## 3. CORE SKILL GAP ANALYSIS
-      Identify the specific technical domains ${name} needs to master. Use a "Technical vs. Soft Skills" approach.
-
-      ## 4. STRATEGIC 6-MONTH EDUCATION ROADMAP
-      Provide a month-by-month plan.
-      - Phase 1 (Month 1-2): Foundation.
-      - Phase 2 (Month 3-4): Project Building.
-      - Phase 3 (Month 5-6): Certification & Market Application.
-
-      ## 5. TOP RECOMMENDED RESOURCES
-      List 3 specific high-value resources:
-      - [Resource Name](URL) - Why this is relevant.
-      - [Certification Name] - The "Gold Standard" for this role in the US.
-
-      ## 6. FINAL ARCHITECTURAL ADVICE
-      A definitive strategic advice for ${name}.
-
-      TONE: Corporate, authoritative, data-driven, and highly encouraging.
-      MARKDOWN RULES: Use bold text for emphasis, bullet points for readability, and clear headings.
+      RULES: 
+      - Use Title Case for headings.
+      - Professional, data-driven and authoritative tone.
     `;
 
     const { text } = await generateText({
-      model: google('gemini-2.5-flash-lite'), // ID correto para o modelo 2.5 flash-lite
+      model: google('gemini-2.0-flash-lite-preview-02-05'),
       prompt: prompt,
     });
 
@@ -55,25 +79,7 @@ export async function POST(req: Request) {
       headers: { 'Content-Type': 'application/json' },
     });
   } catch (error: any) {
-    console.error('Report Generation Error:', error);
-    
-    // Tratamento Amigável de Rate Limit (429)
-    if (error?.statusCode === 429 || error?.message?.includes('429')) {
-      return new Response(JSON.stringify({ 
-        error: 'HIGH_DEMAND', 
-        message: 'The US strategic advisor engines are currently at peak capacity. Please wait about 60 seconds before generating your final roadmap.' 
-      }), { 
-        status: 429,
-        headers: { 'Content-Type': 'application/json' }
-      });
-    }
-
-    return new Response(JSON.stringify({ 
-      error: 'SERVER_ERROR', 
-      message: 'Consultation engine is temporarily unavailable. Please try again in a moment.' 
-    }), { 
-      status: 500,
-      headers: { 'Content-Type': 'application/json' }
-    });
+    console.error('Report Error:', error);
+    return new Response(JSON.stringify({ error: 'SERVER_ERROR' }), { status: 500 });
   }
 }
