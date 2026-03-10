@@ -27,7 +27,8 @@ import {
   Lock,
   User as UserIcon,
   BrainCircuit
-} from 'lucide-react';import html2canvas from 'html2canvas';
+} from 'lucide-react';
+import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
 
 export function StepperAssessment() {
@@ -51,6 +52,9 @@ export function StepperAssessment() {
 
   const pdfCaptureRef = useRef<HTMLDivElement>(null);
 
+  const totalQuestions = ASSESSMENT_QUESTIONS.length;
+  const progress = ((currentStep + 1) / totalQuestions) * 100;
+
   const tabs = [
     { id: 'summary', title: 'Executive Summary', icon: Sparkles, marker: '## 1.' },
     { id: 'matrix', title: 'Match Matrix', icon: Target, marker: '## 2.' },
@@ -62,7 +66,6 @@ export function StepperAssessment() {
     { id: 'advice', title: 'Final Advice', icon: Sparkles, marker: '## 8.' },
   ];
 
-  // Processar o relatório em seções de forma robusta
   const reportSections = useMemo(() => {
     if (!finalReport) return {};
     const sections: Record<string, string[]> = {};
@@ -79,7 +82,6 @@ export function StepperAssessment() {
         sections[currentSectionId].push(line);
       }
     });
-
     return sections;
   }, [finalReport]);
 
@@ -119,12 +121,10 @@ export function StepperAssessment() {
     return () => subscription.unsubscribe();
   }, [supabase]);
 
-  // AUTENTICAÇÃO COM EMAIL/SENHA
   const handleEmailAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
     setIsSubmitting(true);
-
     try {
       if (authMode === 'signup') {
         const { error } = await supabase.auth.signUp({
@@ -136,7 +136,7 @@ export function StepperAssessment() {
           }
         });
         if (error) throw error;
-        alert("Account created! Please check your email for the confirmation link before proceeding.");
+        alert("Account created! Confirm your email.");
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
@@ -146,13 +146,6 @@ export function StepperAssessment() {
     } finally {
       setIsSubmitting(false);
     }
-  };
-
-  const handleGithubLogin = async () => {
-    await supabase.auth.signInWithOAuth({
-      provider: 'github',
-      options: { redirectTo: window.location.origin }
-    });
   };
 
   const startPolling = async (id: string) => {
@@ -168,9 +161,7 @@ export function StepperAssessment() {
           clearInterval(interval);
           setPhase('error');
         }
-      } catch (err) {
-        console.error("Polling error:", err);
-      }
+      } catch (err) { console.error(err); }
     }, 4000);
   };
 
@@ -178,7 +169,6 @@ export function StepperAssessment() {
     if (e) e.preventDefault();
     setIsSubmitting(true);
     const matches = calculateResults();
-    setTopMatches(matches);
     try {
       const response = await fetch('/api/assessment/complete', {
         method: 'POST',
@@ -190,15 +180,8 @@ export function StepperAssessment() {
         setAssessmentId(data.assessmentId);
         setPhase('processing');
         startPolling(data.assessmentId);
-      } else {
-        setPhase('error');
-      }
-    } catch (error) {
-      console.error(error);
-      setPhase('error');
-    } finally {
-      setIsSubmitting(false);
-    }
+      } else { setPhase('error'); }
+    } catch (error) { setPhase('error'); } finally { setIsSubmitting(false); }
   };
 
   const calculateResults = () => {
@@ -232,12 +215,7 @@ export function StepperAssessment() {
         pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
       }
       pdf.save(`WPSTEC_Strategic_Report_${userData.name || 'Professional'}.pdf`);
-    } catch (error) {
-      console.error("PDF Generation failed", error);
-    } finally {
-      element.style.display = 'none';
-      setIsGeneratingPdf(false);
-    }
+    } catch (error) { console.error(error); } finally { element.style.display = 'none'; setIsGeneratingPdf(false); }
   };
 
   if (phase === 'registration') {
@@ -246,19 +224,13 @@ export function StepperAssessment() {
       <Card className="p-8 md:p-12 bg-slate-900 border-slate-800 max-w-xl mx-auto shadow-2xl rounded-[40px] text-white">
         <div className="text-center mb-10">
           <div className="p-4 bg-blue-600 rounded-3xl w-fit mx-auto mb-6 shadow-xl shadow-blue-500/20"><CheckCircle2 className="w-8 h-8" /></div>
-          <h2 className="text-3xl font-black italic tracking-tighter leading-none uppercase">Analysis Complete</h2>
+          <h2 className="text-3xl font-black italic tracking-tighter leading-none uppercase text-white">Analysis Complete</h2>
           <p className="text-slate-400 text-sm mt-3 italic">{isLogged ? "Finalize your profile to generate your roadmap." : "Sign in to save your results and access the roadmap."}</p>
         </div>
-
         {!isLogged ? (
           <div className="space-y-6">
-            <Button onClick={handleGithubLogin} className="w-full bg-white hover:bg-slate-200 text-slate-900 h-14 text-base font-black rounded-2xl flex items-center justify-center gap-3 transition-all active:scale-95"><Github className="w-6 h-6" /> Continue with GitHub</Button>
-            
-            <div className="relative py-4">
-              <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-slate-800"></div></div>
-              <div className="relative flex justify-center text-[10px] uppercase font-black tracking-widest"><span className="bg-slate-900 px-4 text-slate-500">Or use email</span></div>
-            </div>
-
+            <Button onClick={() => supabase.auth.signInWithOAuth({ provider: 'github' })} className="w-full bg-white hover:bg-slate-200 text-slate-900 h-14 text-base font-black rounded-2xl flex items-center justify-center gap-3 transition-all active:scale-95"><Github className="w-6 h-6" /> Continue with GitHub</Button>
+            <div className="relative py-4"><div className="absolute inset-0 flex items-center"><div className="w-full border-t border-slate-800"></div></div><div className="relative flex justify-center text-[10px] uppercase font-black tracking-widest"><span className="bg-slate-900 px-4 text-slate-500">Or use email</span></div></div>
             <form onSubmit={handleEmailAuth} className="space-y-4">
               {authMode === 'signup' && (
                 <div className="space-y-2">
@@ -274,21 +246,16 @@ export function StepperAssessment() {
                 <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 block text-left">Password</label>
                 <div className="relative"><Lock className="absolute left-4 top-3.5 w-4 h-4 text-slate-500" /><Input required type="password" placeholder="••••••••" className="bg-slate-950 border-slate-700 h-12 pl-12 rounded-xl text-white" value={password} onChange={(e) => setPassword(e.target.value)} /></div>
               </div>
-
               {error && <p className="text-red-500 text-[10px] font-bold uppercase text-center">{error}</p>}
-
               <Button type="submit" disabled={isSubmitting} className="w-full bg-slate-800 hover:bg-slate-700 h-14 text-sm font-black mt-2 rounded-2xl">{isSubmitting ? <Loader2 className="w-6 h-6 animate-spin" /> : (authMode === 'signup' ? "Create Account" : "Sign In")}</Button>
-              
-              <button type="button" onClick={() => setAuthMode(authMode === 'signin' ? 'signup' : 'signin')} className="w-full text-[10px] text-slate-500 hover:text-blue-400 font-bold uppercase tracking-widest transition-colors">
-                {authMode === 'signup' ? "Already have an account? Sign In" : "Don't have an account? Sign Up"}
-              </button>
+              <button type="button" onClick={() => setAuthMode(authMode === 'signin' ? 'signup' : 'signin')} className="w-full text-[10px] text-slate-500 hover:text-blue-400 font-bold uppercase tracking-widest transition-colors">{authMode === 'signup' ? "Already have an account? Sign In" : "Don't have an account? Sign Up"}</button>
             </form>
           </div>
         ) : (
           <form onSubmit={handleRegistration} className="space-y-6 text-left">
             <div className="space-y-2 opacity-50"><label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 block">Full Name</label><Input disabled className="bg-slate-950 border-slate-700 h-12 rounded-xl text-white cursor-not-allowed" value={userData.name} /></div>
             <div className="space-y-2 opacity-50"><label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 block">Work E-mail</label><Input disabled className="bg-slate-950 border-slate-700 h-12 rounded-xl text-white cursor-not-allowed" value={userData.email} /></div>
-            <div className="space-y-2"><label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 block">Current Background</label><Input required placeholder="Ex: Sales, Teacher, Student..." className="bg-slate-950 border-slate-700 h-12 rounded-xl text-white" value={userData.currentRole} onChange={(e) => setUserData({...userData, currentRole: e.target.value})} /></div>
+            <div className="space-y-2"><label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 block">Current Background</label><Input required placeholder="Ex: Sales..." className="bg-slate-950 border-slate-700 h-12 rounded-xl text-white" value={userData.currentRole} onChange={(e) => setUserData({...userData, currentRole: e.target.value})} /></div>
             <Button type="submit" disabled={isSubmitting} className="w-full bg-blue-600 hover:bg-blue-500 h-14 text-base font-black shadow-lg shadow-blue-500/20 mt-4 rounded-2xl">{isSubmitting ? <Loader2 className="w-6 h-6 animate-spin" /> : "Access Final Report"}</Button>
           </form>
         )}
@@ -300,14 +267,12 @@ export function StepperAssessment() {
     return (
       <Card className="p-8 md:p-12 bg-slate-900 border-slate-800 max-w-xl mx-auto shadow-2xl rounded-[40px] text-white text-center">
         <div className="relative w-32 h-32 mx-auto mb-10"><div className="absolute inset-0 bg-blue-600/20 rounded-full animate-ping" /><div className="relative p-8 bg-blue-600 rounded-full shadow-2xl shadow-blue-500/40"><Sparkles className="w-12 h-12 text-white animate-pulse" /></div></div>
-        <h2 className="text-3xl font-black italic tracking-tighter leading-none uppercase mb-4">Generating Your Report</h2>
-        <p className="text-slate-400 text-sm mb-8 italic">Our IA is analyzing your Professional DNA against the US Market. This usually takes 30-60 seconds.</p>
+        <h2 className="text-3xl font-black italic tracking-tighter leading-none uppercase mb-4 text-white">Generating Your Report</h2>
         <div className="space-y-4 bg-slate-950/50 p-6 rounded-3xl border border-slate-800 text-left">
           <div className="flex items-center gap-3"><Loader2 className="w-4 h-4 text-blue-500 animate-spin" /><span className="text-[10px] font-black uppercase tracking-widest text-slate-300">Strategy Matrix Generation</span></div>
           <div className="flex items-center gap-3 opacity-50"><Target className="w-4 h-4 text-slate-500" /><span className="text-[10px] font-black uppercase tracking-widest text-slate-500">Market Alignment Check</span></div>
           <div className="flex items-center gap-3 opacity-50"><Rocket className="w-4 h-4 text-slate-500" /><span className="text-[10px] font-black uppercase tracking-widest text-slate-500">Roadmap Customization</span></div>
         </div>
-        <p className="text-[10px] text-slate-500 mt-10 uppercase font-bold tracking-[0.2em]">Don't close this window</p>
       </Card>
     );
   }
@@ -315,8 +280,8 @@ export function StepperAssessment() {
   if (phase === 'results') {
     const currentLines = reportSections[activeTab] || [];
     return (
-      <div className="w-full max-w-7xl mx-auto animate-in fade-in duration-1000 pb-32 px-4 flex flex-col lg:flex-row gap-8">
-        <aside className="w-full lg:w-80 shrink-0"><Card className="bg-slate-900 border-slate-800 p-6 rounded-[32px] sticky top-24 shadow-2xl"><div className="flex items-center gap-4 mb-8 border-b border-slate-800 pb-6"><div className="p-3 bg-blue-600 rounded-2xl shadow-lg shadow-blue-500/20"><Briefcase className="w-6 h-6 text-white" /></div><div><h3 className="text-lg font-black text-white italic tracking-tighter leading-none">{userData.name}</h3><p className="text-[10px] text-blue-500 font-bold uppercase tracking-widest mt-1">Market DNA v2.5</p></div></div><nav className="flex flex-col gap-2">{tabs.map((tab) => (<button key={tab.id} onClick={() => setActiveTab(tab.id)} className={`flex items-center gap-3 px-5 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === tab.id ? "bg-blue-600 text-white shadow-xl scale-[1.02]" : "text-slate-500 hover:text-white hover:bg-slate-800"}`}><tab.icon className="w-4 h-4" />{tab.title}</button>))}</nav><Button onClick={generateMultipagePdf} disabled={isGeneratingPdf} className="w-full mt-8 h-12 bg-slate-800 hover:bg-slate-700 text-slate-300 font-black rounded-2xl transition-all active:scale-95 uppercase tracking-widest text-[9px]">{isGeneratingPdf ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <FileDown className="w-4 h-4 mr-2" />} Export Report</Button></Card></aside>
+      <div className="w-full max-w-7xl mx-auto animate-in fade-in duration-1000 pb-32 px-4 flex flex-col lg:flex-row gap-8 text-left">
+        <aside className="w-full lg:w-80 shrink-0"><Card className="bg-slate-900 border-slate-800 p-6 rounded-[32px] sticky top-24 shadow-2xl"><div className="flex items-center gap-4 mb-8 border-b border-slate-800 pb-6"><div className="p-3 bg-blue-600 rounded-2xl shadow-lg shadow-blue-500/20"><Briefcase className="w-6 h-6 text-white" /></div><div><h3 className="text-lg font-black text-white italic tracking-tighter leading-none uppercase">{userData.name}</h3><p className="text-[10px] text-blue-500 font-bold uppercase tracking-widest mt-1">Market DNA v2.5</p></div></div><nav className="flex flex-col gap-2">{tabs.map((tab) => (<button key={tab.id} onClick={() => setActiveTab(tab.id)} className={`flex items-center gap-3 px-5 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === tab.id ? "bg-blue-600 text-white shadow-xl scale-[1.02]" : "text-slate-500 hover:text-white hover:bg-slate-800"}`}><tab.icon className="w-4 h-4" />{tab.title}</button>))}</nav><Button onClick={generateMultipagePdf} disabled={isGeneratingPdf} className="w-full mt-8 h-12 bg-slate-800 hover:bg-slate-700 text-slate-300 font-black rounded-2xl transition-all active:scale-95 uppercase tracking-widest text-[9px]">{isGeneratingPdf ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <FileDown className="w-4 h-4 mr-2" />} Export Report</Button></Card></aside>
         <main className="flex-1 min-w-0"><Card className="p-8 md:p-16 bg-slate-900/40 border-slate-800 shadow-2xl relative min-h-[700px] rounded-[48px] overflow-hidden backdrop-blur-sm"><div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-blue-600 via-indigo-500 to-emerald-500 opacity-50" /><div className="prose prose-invert max-w-none text-left"><div className="mb-12 border-b border-slate-800 pb-8 flex items-center gap-6 animate-in slide-in-from-left duration-500"><div className="p-4 bg-blue-600/10 rounded-2xl border border-blue-500/20">{React.createElement(tabs.find(t => t.id === activeTab)?.icon || Sparkles, { className: "w-10 h-10 text-blue-500" })}</div><h2 className="text-3xl md:text-5xl font-black text-white italic m-0 tracking-tighter uppercase leading-none">{tabs.find(t => t.id === activeTab)?.title}</h2></div><div className="space-y-6">
           {currentLines.map((line, i) => {
             if (line.trim() === '') return <div key={i} className="h-2" />;
@@ -330,16 +295,14 @@ export function StepperAssessment() {
             return <p key={i} className="leading-[1.8] text-slate-300 text-sm md:text-base opacity-90 font-medium text-balance animate-in fade-in" dangerouslySetInnerHTML={{ __html: formattedLine }} />;
           })}
         </div></div></Card></main>
-
         <div style={{ position: 'absolute', left: '-9999px', top: '-9999px' }}><div ref={pdfCaptureRef} className="bg-white p-0">
-          {tabs.map((tab, pageIdx) => (<div key={tab.id} className="pdf-page w-[210mm] min-h-[297mm] p-20 bg-white text-slate-900 flex flex-col relative overflow-hidden"><div className="flex justify-between items-start mb-12"><div className="flex items-center gap-3"><div className="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center"><BrainCircuit className="w-6 h-6 text-white" /></div><div className="font-black text-xl italic tracking-tighter uppercase">WPSTEC <span className="text-blue-600">PATH</span></div></div><div className="text-right"><div className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Confidential Strategy Report</div><div className="text-[8px] text-slate-300 font-bold uppercase tracking-widest mt-1">Version 2.5 • US Market DNA</div></div></div><div className="mb-8 flex items-center gap-4"><tab.icon className="w-8 h-8 text-blue-600" /><h2 className="text-3xl font-black italic tracking-tighter uppercase m-0 text-slate-900">{tab.title}</h2></div><div className="flex-1 text-sm leading-relaxed text-slate-600 space-y-4">{(reportSections[tab.id] || []).map((line, i) => (<p key={i} className="m-0">{line.replace(/\*\*/g, '').replace(/\[(.*?)\]\(.*?\)/g, '$1')}</p>))}</div><div className="mt-12 pt-8 border-t border-slate-100 flex justify-between items-center"><div className="text-[8px] font-bold text-slate-300 uppercase tracking-widest">© 2026 WPS Technology Services LLC • Strategic Career Alignment</div><div className="text-[8px] font-black text-blue-600 uppercase tracking-widest italic">Page {pageIdx + 1} of {tabs.length}</div></div></div>))}
+          {tabs.map((tab, pageIdx) => (<div key={tab.id} className="pdf-page w-[210mm] min-h-[297mm] p-20 bg-white text-slate-900 flex flex-col relative overflow-hidden"><div className="flex justify-between items-start mb-12"><div className="flex items-center gap-3"><div className="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center"><BrainCircuit className="w-6 h-6 text-white" /></div><div className="font-black text-xl italic tracking-tighter uppercase text-slate-900">WPSTEC <span className="text-blue-600">PATH</span></div></div><div className="text-right"><div className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Confidential Strategy Report</div><div className="text-[8px] text-slate-300 font-bold uppercase tracking-widest mt-1">Version 2.5 • US Market DNA</div></div></div><div className="mb-8 flex items-center gap-4"><tab.icon className="w-8 h-8 text-blue-600" /><h2 className="text-3xl font-black italic tracking-tighter uppercase m-0 text-slate-900">{tab.title}</h2></div><div className="flex-1 text-sm leading-relaxed text-slate-600 space-y-4">{(reportSections[tab.id] || []).map((line, i) => (<p key={i} className="m-0 text-slate-700">{line.replace(/\*\*/g, '').replace(/\[(.*?)\]\(.*?\)/g, '$1')}</p>))}</div><div className="mt-12 pt-8 border-t border-slate-100 flex justify-between items-center"><div className="text-[8px] font-bold text-slate-300 uppercase tracking-widest">© 2026 WPS Technology Services LLC • Strategic Career Alignment</div><div className="text-[8px] font-black text-blue-600 uppercase tracking-widest italic">Page {pageIdx + 1} of {tabs.length}</div></div></div>))}
         </div></div>
       </div>
     );
   }
 
   const currentQuestion = ASSESSMENT_QUESTIONS[currentStep];
-  const progress = ((currentStep + 1) / totalQuestions) * 100;
 
   return (
     <div className="max-w-3xl mx-auto space-y-8 animate-in slide-in-from-bottom-4 duration-500 px-4">
@@ -348,7 +311,7 @@ export function StepperAssessment() {
         <div className="absolute top-0 right-0 w-48 h-48 bg-blue-600/5 blur-3xl -z-10" />
         <div className="flex-1 flex flex-col justify-center">
           <span className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.4em] mb-6 text-center opacity-60 italic tracking-widest uppercase leading-none">Cognitive Matrix</span>
-          <h2 className="text-xl md:text-3xl font-black text-white text-center mb-12 leading-tight px-4 text-balance italic tracking-tighter">{currentQuestion.text}</h2>
+          <h2 className="text-xl md:text-3xl font-black text-white text-center mb-12 leading-tight px-4 text-balance italic tracking-tighter text-white">{currentQuestion.text}</h2>
           <div className="grid gap-4 max-w-xl mx-auto w-full">
             {currentQuestion.options.map((option, idx) => (
               <button key={idx} onClick={() => handleOptionSelect(currentQuestion.id, idx)} className={`w-full text-left p-5 rounded-[24px] border-2 transition-all duration-300 ${answers[currentQuestion.id] === idx ? "bg-blue-600/10 border-blue-500 text-white shadow-[0_0_40px_rgba(59,130,246,0.15)] scale-[1.01]" : "bg-slate-950/40 border-slate-800/50 text-slate-500 hover:border-slate-700 hover:text-slate-300"}`}>
