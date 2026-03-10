@@ -41,7 +41,7 @@ export function Navbar() {
           <div className="p-2 bg-blue-600 rounded-xl shadow-lg shadow-blue-500/20 group-hover:scale-110 transition-transform">
             <BrainCircuit className="w-6 h-6 text-white" />
           </div>
-          <span className="hidden sm:inline">{BRAND_CONFIG.shortCompany} <span className="text-blue-500 italic">Path</span></span>
+          <span className="hidden sm:inline">{BRAND_CONFIG.shortCompany} <span className="text-blue-500 italic">{BRAND_CONFIG.shortCompany2nd}</span></span>
         </Link>
         
         {/* Desktop Links */}
