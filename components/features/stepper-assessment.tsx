@@ -66,7 +66,7 @@ export function StepperAssessment() {
     { id: 'advice', title: 'Final Advice', icon: Sparkles, marker: '## 8.' },
   ];
 
-  // Carregar progresso inicial
+  // 1. RECUPERAR ESTADO DO LOCALSTORAGE AO MONTAR
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const id = params.get('id');
@@ -88,7 +88,7 @@ export function StepperAssessment() {
     if (savedUserData) setUserData(JSON.parse(savedUserData));
   }, []);
 
-  // Salvar progresso
+  // 2. SALVAR ESTADO NO LOCALSTORAGE SEMPRE QUE MUDAR
   useEffect(() => {
     if (Object.keys(answers).length > 0) {
       localStorage.setItem('assessment_answers', JSON.stringify(answers));
@@ -98,7 +98,7 @@ export function StepperAssessment() {
     }
   }, [answers, currentStep, phase, userData]);
 
-  // Monitorar Sessão
+  // Monitorar Sessão do Supabase
   useEffect(() => {
     const getSession = async () => {
       const { data: { session: s } } = await supabase.auth.getSession();
@@ -152,7 +152,7 @@ export function StepperAssessment() {
           clearInterval(interval);
           setFinalReport(data.report);
           setPhase('results');
-          localStorage.removeItem('assessment_answers');
+          localStorage.removeItem('assessment_answers'); 
         } else if (data.status === 'FAILED') {
           clearInterval(interval);
           setPhase('error');
@@ -213,14 +213,15 @@ export function StepperAssessment() {
     try {
       if (authMode === 'signup') {
         const { error: err } = await supabase.auth.signUp({
-          email, password,
+          email,
+          password,
           options: {
             data: { full_name: userData.name },
             emailRedirectTo: window.location.href
           }
         });
         if (err) throw err;
-        alert("Verification email sent!");
+        alert("Verification email sent! Confirm it to see your results.");
       } else {
         const { error: err } = await supabase.auth.signInWithPassword({ email, password });
         if (err) throw err;
@@ -262,10 +263,10 @@ export function StepperAssessment() {
     const isLogged = !!session;
     return (
       <Card className="p-8 md:p-12 bg-slate-900 border-slate-800 max-w-xl mx-auto shadow-2xl rounded-[40px] text-white">
-        <div className="text-center mb-10">
+        <div className="text-center mb-10 text-white text-left">
           <div className="p-4 bg-blue-600 rounded-3xl w-fit mx-auto mb-6 shadow-xl shadow-blue-500/20"><CheckCircle2 className="w-8 h-8" /></div>
           <h2 className="text-3xl font-black italic tracking-tighter leading-none uppercase text-white">Analysis Complete</h2>
-          <p className="text-slate-400 text-sm mt-3 italic">{isLogged ? "Finalize your profile to generate your roadmap." : "Sign in to access your roadmap."}</p>
+          <p className="text-slate-400 text-sm mt-3 italic">{isLogged ? "Finalize your profile to generate your roadmap." : "Sign in to save your results and access the roadmap."}</p>
         </div>
         {!isLogged ? (
           <div className="space-y-6">
@@ -286,7 +287,7 @@ export function StepperAssessment() {
                 <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 block">Password</label>
                 <div className="relative"><Lock className="absolute left-4 top-3.5 w-4 h-4 text-slate-500" /><Input required type="password" placeholder="••••••••" className="bg-slate-950 border-slate-700 h-12 pl-12 rounded-xl text-white" value={password} onChange={(e) => setPassword(e.target.value)} /></div>
               </div>
-              {error && <p className="text-red-500 text-[10px] font-bold uppercase text-center">{error}</p>}
+              {error && <p className="text-red-500 text-[10px] font-bold text-center">{error}</p>}
               <Button type="submit" disabled={isSubmitting} className="w-full bg-slate-800 hover:bg-slate-700 h-14 text-sm font-black mt-2 rounded-2xl">{isSubmitting ? <Loader2 className="w-6 h-6 animate-spin" /> : (authMode === 'signup' ? "Create Account" : "Sign In")}</Button>
               <button type="button" onClick={() => setAuthMode(authMode === 'signin' ? 'signup' : 'signin')} className="w-full text-[10px] text-slate-500 hover:text-blue-400 font-bold uppercase tracking-widest transition-colors">{authMode === 'signup' ? "Already have an account? Sign In" : "Don't have an account? Sign Up"}</button>
             </form>
@@ -332,7 +333,7 @@ export function StepperAssessment() {
               const starCount = (line.match(/⭐/g) || []).length;
               return (<div key={i} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-6 bg-slate-950/50 border border-slate-800 rounded-[24px] mb-4 shadow-inner group hover:border-blue-500/30 transition-all scale-in-center"><div className="flex flex-col gap-1"><span className="text-lg font-bold text-slate-200 italic">{line.replace('- ', '').split(':')[0]}</span></div><div className="flex gap-1.5 mt-4 sm:mt-0">{[1,2,3,4,5].map((s) => (<Star key={s} className={`w-5 h-5 ${s <= starCount ? "text-yellow-500 fill-yellow-500" : "text-slate-800"}`} />))}</div></div>);
             }
-            const formattedLine = line.replace(/\*\*(.*?)\*\*/g, '<strong class="text-white font-black">$1</strong>').replace(/\[(.*?)\]\((.*?)\)/g, '<a href="$2" target="_blank" class="text-blue-400 underline hover:text-blue-300 transition-colors">$1</a>');
+            const formattedLine = line.replace(/\*\*(.*?)\*\*/g, '<strong class="text-white font-black">$1</strong>').replace(/\[(.*?)\]\((.*?)\)/g, '<a href="$2" target=\"_blank\" class=\"text-blue-400 underline hover:text-blue-300 transition-colors\">$1</a>');
             return <p key={i} className="leading-[1.8] text-slate-300 text-sm md:text-base opacity-90 font-medium text-balance animate-in fade-in" dangerouslySetInnerHTML={{ __html: formattedLine }} />;
           })}
         </div></div></Card></main>
