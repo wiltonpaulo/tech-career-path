@@ -1,6 +1,6 @@
 export const BRAND_CONFIG = {
   name: "Carrer Advisor",
-  author: "Wilton Paulo da Silva",
+  author: "Wilton Paulo",
   company: "WPS Technology Services LLC",
   shortCompany: "Carrer",
   shortCompany2nd: "Advisor",

@@ -4,18 +4,19 @@ import { Pool } from "pg";
 
 const globalForPrisma = global as unknown as { prisma: PrismaClient };
 
-// Solução agressiva para o erro de self-signed certificate em ambientes serverless (Vercel)
-// Isso instrui o Node.js a ignorar a validação da cadeia de certificados para TLS
-process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
-
 let connectionString = process.env.POSTGRES_PRISMA_URL || '';
 
-// Configuração robusta do Pool para o driver 'pg'
+// Limpa a string de conexão para evitar conflitos de parâmetros SSL
+if (connectionString.includes('sslmode=')) {
+  // Remove sslmode=... e substitui por algo neutro, pois vamos configurar no objeto Pool
+  connectionString = connectionString.replace(/sslmode=[^&]+/, 'sslmode=no-verify');
+}
+
 const pool = new Pool({ 
   connectionString,
   max: 10,
   ssl: {
-    rejectUnauthorized: false
+    rejectUnauthorized: false // Aceita certificados do Supabase/Vercel
   }
 });
 
@@ -25,6 +26,8 @@ export const prisma =
   globalForPrisma.prisma ||
   new PrismaClient({
     adapter,
+    // Deixando logs desativados em produção para evitar poluição
+    log: process.env.NODE_ENV === 'development' ? ['query', 'error'] : ['error'],
   });
 
 if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = prisma;
