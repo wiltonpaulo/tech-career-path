@@ -66,12 +66,70 @@ export function StepperAssessment() {
     { id: 'advice', title: 'Final Advice', icon: Sparkles, marker: '## 8.' },
   ];
 
+  // 1. RECUPERAR ESTADO DO LOCALSTORAGE AO MONTAR
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const id = params.get('id');
+    if (id) {
+      setAssessmentId(id);
+      setPhase('processing');
+      startPolling(id);
+      return;
+    }
+
+    const savedAnswers = localStorage.getItem('assessment_answers');
+    const savedStep = localStorage.getItem('assessment_step');
+    const savedPhase = localStorage.getItem('assessment_phase');
+    const savedUserData = localStorage.getItem('assessment_user_data');
+
+    if (savedAnswers) setAnswers(JSON.parse(savedAnswers));
+    if (savedStep) setCurrentStep(parseInt(savedStep));
+    if (savedPhase && savedPhase !== 'testing') setPhase(savedPhase as any);
+    if (savedUserData) setUserData(JSON.parse(savedUserData));
+  }, []);
+
+  // 2. SALVAR ESTADO NO LOCALSTORAGE SEMPRE QUE MUDAR
+  useEffect(() => {
+    if (Object.keys(answers).length > 0) {
+      localStorage.setItem('assessment_answers', JSON.stringify(answers));
+      localStorage.setItem('assessment_step', currentStep.toString());
+      localStorage.setItem('assessment_phase', phase);
+      localStorage.setItem('assessment_user_data', JSON.stringify(userData));
+    }
+  }, [answers, currentStep, phase, userData]);
+
+  // Monitorar Sessão do Supabase
+  useEffect(() => {
+    const getSession = async () => {
+      const { data: { session: s } } = await supabase.auth.getSession();
+      setSession(s);
+      if (s?.user) {
+        setUserData(prev => ({
+          ...prev,
+          name: s.user.user_metadata.full_name || s.user.email?.split('@')[0] || prev.name,
+          email: s.user.email || prev.email,
+        }));
+      }
+    };
+    getSession();
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, s) => {
+      setSession(s);
+      if (s?.user) {
+        setUserData(prev => ({
+          ...prev,
+          name: s.user.user_metadata.full_name || s.user.email?.split('@')[0] || prev.name,
+          email: s.user.email || prev.email,
+        }));
+      }
+    });
+    return () => subscription.unsubscribe();
+  }, [supabase]);
+
   const reportSections = useMemo(() => {
     if (!finalReport) return {};
     const sections: Record<string, string[]> = {};
     const lines = finalReport.split('\n');
     let currentSectionId = 'summary';
-
     lines.forEach(line => {
       const foundTab = tabs.find(t => line.trim().startsWith(t.marker));
       if (foundTab) {
@@ -85,42 +143,6 @@ export function StepperAssessment() {
     return sections;
   }, [finalReport]);
 
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const id = params.get('id');
-    if (id) {
-      setAssessmentId(id);
-      setPhase('processing');
-      startPolling(id);
-    }
-  }, []);
-
-  useEffect(() => {
-    const getSession = async () => {
-      const { data: { session: currentSession } } = await supabase.auth.getSession();
-      setSession(currentSession);
-      if (currentSession?.user) {
-        setUserData(prev => ({
-          ...prev,
-          name: currentSession.user.user_metadata.full_name || currentSession.user.email?.split('@')[0] || '',
-          email: currentSession.user.email || '',
-        }));
-      }
-    };
-    getSession();
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
-      if (session?.user) {
-        setUserData(prev => ({
-          ...prev,
-          name: session.user.user_metadata.full_name || session.user.email?.split('@')[0] || '',
-          email: session.user.email || '',
-        }));
-      }
-    });
-    return () => subscription.unsubscribe();
-  }, [supabase]);
-
   const startPolling = async (id: string) => {
     const interval = setInterval(async () => {
       try {
@@ -130,6 +152,7 @@ export function StepperAssessment() {
           clearInterval(interval);
           setFinalReport(data.report);
           setPhase('results');
+          localStorage.removeItem('assessment_answers'); 
         } else if (data.status === 'FAILED') {
           clearInterval(interval);
           setPhase('error');
@@ -138,8 +161,8 @@ export function StepperAssessment() {
     }, 4000);
   };
 
-  const handleOptionSelect = (questionId: number, optionIndex: number) => {
-    setAnswers(prev => ({ ...prev, [questionId]: optionIndex }));
+  const handleOptionSelect = (qId: number, idx: number) => {
+    setAnswers(prev => ({ ...prev, [qId]: idx }));
   };
 
   const calculateResults = () => {
@@ -175,31 +198,35 @@ export function StepperAssessment() {
     } catch (error) { setPhase('error'); } finally { setIsSubmitting(false); }
   };
 
+  const handleGithubLogin = async () => {
+    localStorage.setItem('assessment_phase', 'registration');
+    await supabase.auth.signInWithOAuth({
+      provider: 'github',
+      options: { redirectTo: window.location.href }
+    });
+  };
+
   const handleEmailAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
     setIsSubmitting(true);
     try {
       if (authMode === 'signup') {
-        const { error: signUpError } = await supabase.auth.signUp({
+        const { error: err } = await supabase.auth.signUp({
           email,
           password,
           options: {
             data: { full_name: userData.name },
-            emailRedirectTo: window.location.origin
+            emailRedirectTo: window.location.href
           }
         });
-        if (signUpError) throw signUpError;
-        alert("Account created! Check your email for the confirmation link!");
+        if (err) throw err;
+        alert("Verification email sent! Confirm it to see your results.");
       } else {
-        const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
-        if (signInError) throw signInError;
+        const { error: err } = await supabase.auth.signInWithPassword({ email, password });
+        if (err) throw err;
       }
-    } catch (err: any) {
-      setError(err.message);
-    } finally {
-      setIsSubmitting(false);
-    }
+    } catch (err: any) { setError(err.message); } finally { setIsSubmitting(false); }
   };
 
   const generateMultipagePdf = async () => {
@@ -223,10 +250,7 @@ export function StepperAssessment() {
     } catch (error) { console.error(error); } finally { element.style.display = 'none'; setIsGeneratingPdf(false); }
   };
 
-  const prevStep = () => {
-    if (currentStep > 0) setCurrentStep(currentStep - 1);
-  };
-
+  const prevStep = () => { if (currentStep > 0) setCurrentStep(currentStep - 1); };
   const nextStep = () => {
     if (currentStep < totalQuestions - 1) {
       setCurrentStep(currentStep + 1);
@@ -239,31 +263,31 @@ export function StepperAssessment() {
     const isLogged = !!session;
     return (
       <Card className="p-8 md:p-12 bg-slate-900 border-slate-800 max-w-xl mx-auto shadow-2xl rounded-[40px] text-white">
-        <div className="text-center mb-10">
+        <div className="text-center mb-10 text-white text-left">
           <div className="p-4 bg-blue-600 rounded-3xl w-fit mx-auto mb-6 shadow-xl shadow-blue-500/20"><CheckCircle2 className="w-8 h-8" /></div>
           <h2 className="text-3xl font-black italic tracking-tighter leading-none uppercase text-white">Analysis Complete</h2>
           <p className="text-slate-400 text-sm mt-3 italic">{isLogged ? "Finalize your profile to generate your roadmap." : "Sign in to save your results and access the roadmap."}</p>
         </div>
         {!isLogged ? (
           <div className="space-y-6">
-            <Button onClick={() => supabase.auth.signInWithOAuth({ provider: 'github' })} className="w-full bg-white hover:bg-slate-200 text-slate-900 h-14 text-base font-black rounded-2xl flex items-center justify-center gap-3 transition-all active:scale-95"><Github className="w-6 h-6" /> Continue with GitHub</Button>
+            <Button onClick={handleGithubLogin} className="w-full bg-white hover:bg-slate-200 text-slate-900 h-14 text-base font-black rounded-2xl flex items-center justify-center gap-3 transition-all active:scale-95"><Github className="w-6 h-6" /> Continue with GitHub</Button>
             <div className="relative py-4"><div className="absolute inset-0 flex items-center"><div className="w-full border-t border-slate-800"></div></div><div className="relative flex justify-center text-[10px] uppercase font-black tracking-widest"><span className="bg-slate-900 px-4 text-slate-500">Or use email</span></div></div>
-            <form onSubmit={handleEmailAuth} className="space-y-4">
+            <form onSubmit={handleEmailAuth} className="space-y-4 text-left">
               {authMode === 'signup' && (
                 <div className="space-y-2">
-                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 block text-left">Full Name</label>
+                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 block">Full Name</label>
                   <div className="relative"><UserIcon className="absolute left-4 top-3.5 w-4 h-4 text-slate-500" /><Input required placeholder="Wilton Paulo" className="bg-slate-950 border-slate-700 h-12 pl-12 rounded-xl text-white" value={userData.name} onChange={(e) => setUserData({...userData, name: e.target.value})} /></div>
                 </div>
               )}
               <div className="space-y-2">
-                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 block text-left">Email Address</label>
-                <div className="relative"><Mail className="absolute left-4 top-3.5 w-4 h-4 text-slate-500" /><Input required type="email" placeholder="wilton@wpstec.com" className="bg-slate-950 border-slate-700 h-12 pl-12 rounded-xl text-white" value={email} onChange={(e) => setEmail(e.target.value)} /></div>
+                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 block">Email Address</label>
+                <div className="relative"><Mail className="absolute left-4 top-3.5 w-4 h-4 text-slate-500" /><Input required type="email" placeholder="wilton@wpstec.com" className="bg-slate-950 border-slate-700 h-12 pl-12 rounded-xl text-white" value={email} onChange={(e) => { setEmail(e.target.value); setUserData({...userData, email: e.target.value}); }} /></div>
               </div>
               <div className="space-y-2">
-                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 block text-left">Password</label>
+                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 block">Password</label>
                 <div className="relative"><Lock className="absolute left-4 top-3.5 w-4 h-4 text-slate-500" /><Input required type="password" placeholder="••••••••" className="bg-slate-950 border-slate-700 h-12 pl-12 rounded-xl text-white" value={password} onChange={(e) => setPassword(e.target.value)} /></div>
               </div>
-              {error && <p className="text-red-500 text-[10px] font-bold uppercase text-center">{error}</p>}
+              {error && <p className="text-red-500 text-[10px] font-bold text-center">{error}</p>}
               <Button type="submit" disabled={isSubmitting} className="w-full bg-slate-800 hover:bg-slate-700 h-14 text-sm font-black mt-2 rounded-2xl">{isSubmitting ? <Loader2 className="w-6 h-6 animate-spin" /> : (authMode === 'signup' ? "Create Account" : "Sign In")}</Button>
               <button type="button" onClick={() => setAuthMode(authMode === 'signin' ? 'signup' : 'signin')} className="w-full text-[10px] text-slate-500 hover:text-blue-400 font-bold uppercase tracking-widest transition-colors">{authMode === 'signup' ? "Already have an account? Sign In" : "Don't have an account? Sign Up"}</button>
             </form>
@@ -309,12 +333,12 @@ export function StepperAssessment() {
               const starCount = (line.match(/⭐/g) || []).length;
               return (<div key={i} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-6 bg-slate-950/50 border border-slate-800 rounded-[24px] mb-4 shadow-inner group hover:border-blue-500/30 transition-all scale-in-center"><div className="flex flex-col gap-1"><span className="text-lg font-bold text-slate-200 italic">{line.replace('- ', '').split(':')[0]}</span></div><div className="flex gap-1.5 mt-4 sm:mt-0">{[1,2,3,4,5].map((s) => (<Star key={s} className={`w-5 h-5 ${s <= starCount ? "text-yellow-500 fill-yellow-500" : "text-slate-800"}`} />))}</div></div>);
             }
-            const formattedLine = line.replace(/\*\*(.*?)\*\*/g, '<strong class="text-white font-black">$1</strong>').replace(/\[(.*?)\]\((.*?)\)/g, '<a href="$2" target="_blank" class="text-blue-400 underline hover:text-blue-300 transition-colors">$1</a>');
+            const formattedLine = line.replace(/\*\*(.*?)\*\*/g, '<strong class="text-white font-black">$1</strong>').replace(/\[(.*?)\]\((.*?)\)/g, '<a href="$2" target=\"_blank\" class=\"text-blue-400 underline hover:text-blue-300 transition-colors\">$1</a>');
             return <p key={i} className="leading-[1.8] text-slate-300 text-sm md:text-base opacity-90 font-medium text-balance animate-in fade-in" dangerouslySetInnerHTML={{ __html: formattedLine }} />;
           })}
         </div></div></Card></main>
-        <div style={{ position: 'absolute', left: '-9999px', top: '-9999px' }}><div ref={pdfCaptureRef} className="bg-white p-0">
-          {tabs.map((tab, pageIdx) => (<div key={tab.id} className="pdf-page w-[210mm] min-h-[297mm] p-20 bg-white text-slate-900 flex flex-col relative overflow-hidden"><div className="flex justify-between items-start mb-12"><div className="flex items-center gap-3"><div className="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center"><BrainCircuit className="w-6 h-6 text-white" /></div><div className="font-black text-xl italic tracking-tighter uppercase text-slate-900">WPSTEC <span className="text-blue-600">PATH</span></div></div><div className="text-right"><div className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Confidential Strategy Report</div><div className="text-[8px] text-slate-300 font-bold uppercase tracking-widest mt-1">Version 2.5 • US Market DNA</div></div></div><div className="mb-8 flex items-center gap-4"><tab.icon className="w-8 h-8 text-blue-600" /><h2 className="text-3xl font-black italic tracking-tighter uppercase m-0 text-slate-900">{tab.title}</h2></div><div className="flex-1 text-sm leading-relaxed text-slate-600 space-y-4">{(reportSections[tab.id] || []).map((line, i) => (<p key={i} className="m-0 text-slate-700">{line.replace(/\*\*/g, '').replace(/\[(.*?)\]\(.*?\)/g, '$1')}</p>))}</div><div className="mt-12 pt-8 border-t border-slate-100 flex justify-between items-center"><div className="text-[8px] font-bold text-slate-300 uppercase tracking-widest">© 2026 WPS Technology Services LLC • Strategic Career Alignment</div><div className="text-[8px] font-black text-blue-600 uppercase tracking-widest italic">Page {pageIdx + 1} of {tabs.length}</div></div></div>))}
+        <div style={{ position: 'absolute', left: '-9999px', top: '-9999px' }}><div ref={pdfCaptureRef} className="bg-white p-0 text-slate-900">
+          {tabs.map((tab, pageIdx) => (<div key={tab.id} className="pdf-page w-[210mm] min-h-[297mm] p-20 bg-white text-slate-900 flex flex-col relative overflow-hidden"><div className="flex justify-between items-start mb-12"><div className="flex items-center gap-3"><div className="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center"><BrainCircuit className="w-6 h-6 text-white" /></div><div className="font-black text-xl italic tracking-tighter uppercase text-slate-900">WPSTEC <span className="text-blue-600">PATH</span></div></div><div className="text-right"><div className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Confidential Strategy Report</div><div className="text-[8px] text-slate-300 font-bold uppercase tracking-widest mt-1">Version 2.5 • US Market DNA</div></div></div><div className="mb-8 flex items-center gap-4"><tab.icon className="w-8 h-8 text-blue-600" /><h2 className="text-3xl font-black italic tracking-tighter uppercase m-0 text-slate-900">{tab.title}</h2></div><div className="flex-1 text-sm leading-relaxed text-slate-600 space-y-4">{(reportSections[tab.id] || []).map((line, i) => (<p key={i} className="m-0 text-slate-700 text-left">{line.replace(/\*\*/g, '').replace(/\[(.*?)\]\(.*?\)/g, '$1')}</p>))}</div><div className="mt-12 pt-8 border-t border-slate-100 flex justify-between items-center"><div className="text-[8px] font-bold text-slate-300 uppercase tracking-widest">© 2026 WPS Technology Services LLC • Strategic Career Alignment</div><div className="text-[8px] font-black text-blue-600 uppercase tracking-widest italic">Page {pageIdx + 1} of {tabs.length}</div></div></div>))}
         </div></div>
       </div>
     );
@@ -325,7 +349,7 @@ export function StepperAssessment() {
   return (
     <div className="max-w-3xl mx-auto space-y-8 animate-in slide-in-from-bottom-4 duration-500 px-4 text-left">
       <div className="px-2 text-white text-left">
-        <div className="flex justify-between items-end mb-4">
+        <div className="flex justify-between items-end mb-4 text-white">
           <span className="text-[10px] font-black text-blue-500 uppercase tracking-[0.1em]">WPSTEC Engine v2.5</span>
           <span className="text-[10px] font-black text-slate-600 tracking-widest italic">{Math.round(progress)}% Complete</span>
         </div>
@@ -336,7 +360,7 @@ export function StepperAssessment() {
         <div className="absolute top-0 right-0 w-48 h-48 bg-blue-600/5 blur-3xl -z-10" />
         <div className="flex-1 flex flex-col justify-center">
           <span className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.4em] mb-6 text-center opacity-60 italic tracking-widest uppercase leading-none">Cognitive Matrix</span>
-          <h2 className="text-xl md:text-3xl font-black text-white text-center mb-12 leading-tight px-4 text-balance italic tracking-tighter text-white">{currentQuestion.text}</h2>
+          <h2 className="text-xl md:text-3xl font-black text-white text-center mb-12 leading-tight px-4 text-balance italic tracking-tighter">{currentQuestion.text}</h2>
           <div className="grid gap-4 max-w-xl mx-auto w-full">
             {currentQuestion.options.map((option, idx) => (
               <button key={idx} onClick={() => handleOptionSelect(currentQuestion.id, idx)} className={`w-full text-left p-5 rounded-[24px] border-2 transition-all duration-300 ${answers[currentQuestion.id] === idx ? "bg-blue-600/10 border-blue-500 text-white shadow-[0_0_40px_rgba(59,130,246,0.15)] scale-[1.01]" : "bg-slate-950/40 border-slate-800/50 text-slate-500 hover:border-slate-700 hover:text-slate-300"}`}>
