@@ -25,9 +25,9 @@ import {
   Github,
   Mail,
   Lock,
-  User as UserIcon
-} from 'lucide-react';
-import html2canvas from 'html2canvas';
+  User as UserIcon,
+  BrainCircuit
+} from 'lucide-react';import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
 
 export function StepperAssessment() {
