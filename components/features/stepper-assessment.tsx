@@ -97,13 +97,13 @@ export function StepperAssessment() {
 
   useEffect(() => {
     const getSession = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      setSession(session);
-      if (session?.user) {
+      const { data: { session: currentSession } } = await supabase.auth.getSession();
+      setSession(currentSession);
+      if (currentSession?.user) {
         setUserData(prev => ({
           ...prev,
-          name: session.user.user_metadata.full_name || session.user.email?.split('@')[0] || '',
-          email: session.user.email || '',
+          name: currentSession.user.user_metadata.full_name || currentSession.user.email?.split('@')[0] || '',
+          email: currentSession.user.email || '',
         }));
       }
     };
@@ -120,33 +120,6 @@ export function StepperAssessment() {
     });
     return () => subscription.unsubscribe();
   }, [supabase]);
-
-  const handleEmailAuth = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError(null);
-    setIsSubmitting(true);
-    try {
-      if (authMode === 'signup') {
-        const { error } = await supabase.auth.signUp({
-          email,
-          password,
-          options: {
-            data: { full_name: userData.name },
-            emailRedirectTo: window.location.origin
-          }
-        });
-        if (error) throw error;
-        alert("Account created! Confirm your email.");
-      } else {
-        const { error } = await supabase.auth.signInWithPassword({ email, password });
-        if (error) throw error;
-      }
-    } catch (err: any) {
-      setError(err.message);
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
 
   const startPolling = async (id: string) => {
     const interval = setInterval(async () => {
@@ -165,10 +138,28 @@ export function StepperAssessment() {
     }, 4000);
   };
 
+  const handleOptionSelect = (questionId: number, optionIndex: number) => {
+    setAnswers(prev => ({ ...prev, [questionId]: optionIndex }));
+  };
+
+  const calculateResults = () => {
+    const scores: Record<string, number> = {};
+    ASSESSMENT_QUESTIONS.forEach((q) => {
+      const idx = answers[q.id];
+      if (idx !== undefined) {
+        Object.entries(q.options[idx].weights).forEach(([area, weight]) => {
+          scores[area] = (scores[area] || 0) + (weight as number);
+        });
+      }
+    });
+    return Object.entries(scores).sort(([, a], [, b]) => b - a).slice(0, 3).map(([area]) => area);
+  };
+
   const handleRegistration = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     setIsSubmitting(true);
     const matches = calculateResults();
+    setTopMatches(matches);
     try {
       const response = await fetch('/api/assessment/complete', {
         method: 'POST',
@@ -184,17 +175,31 @@ export function StepperAssessment() {
     } catch (error) { setPhase('error'); } finally { setIsSubmitting(false); }
   };
 
-  const calculateResults = () => {
-    const scores: Record<string, number> = {};
-    ASSESSMENT_QUESTIONS.forEach((q) => {
-      const idx = answers[q.id];
-      if (idx !== undefined) {
-        Object.entries(q.options[idx].weights).forEach(([area, weight]) => {
-          scores[area] = (scores[area] || 0) + (weight as number);
+  const handleEmailAuth = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    setIsSubmitting(true);
+    try {
+      if (authMode === 'signup') {
+        const { error: signUpError } = await supabase.auth.signUp({
+          email,
+          password,
+          options: {
+            data: { full_name: userData.name },
+            emailRedirectTo: window.location.origin
+          }
         });
+        if (signUpError) throw signUpError;
+        alert("Account created! Check your email for the confirmation link!");
+      } else {
+        const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
+        if (signInError) throw signInError;
       }
-    });
-    return Object.entries(scores).sort(([, a], [, b]) => b - a).slice(0, 3).map(([area]) => area);
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const generateMultipagePdf = async () => {
@@ -216,6 +221,18 @@ export function StepperAssessment() {
       }
       pdf.save(`WPSTEC_Strategic_Report_${userData.name || 'Professional'}.pdf`);
     } catch (error) { console.error(error); } finally { element.style.display = 'none'; setIsGeneratingPdf(false); }
+  };
+
+  const prevStep = () => {
+    if (currentStep > 0) setCurrentStep(currentStep - 1);
+  };
+
+  const nextStep = () => {
+    if (currentStep < totalQuestions - 1) {
+      setCurrentStep(currentStep + 1);
+    } else {
+      setPhase('registration');
+    }
   };
 
   if (phase === 'registration') {
@@ -268,6 +285,7 @@ export function StepperAssessment() {
       <Card className="p-8 md:p-12 bg-slate-900 border-slate-800 max-w-xl mx-auto shadow-2xl rounded-[40px] text-white text-center">
         <div className="relative w-32 h-32 mx-auto mb-10"><div className="absolute inset-0 bg-blue-600/20 rounded-full animate-ping" /><div className="relative p-8 bg-blue-600 rounded-full shadow-2xl shadow-blue-500/40"><Sparkles className="w-12 h-12 text-white animate-pulse" /></div></div>
         <h2 className="text-3xl font-black italic tracking-tighter leading-none uppercase mb-4 text-white">Generating Your Report</h2>
+        <p className="text-slate-400 text-sm mb-8 italic">Our IA is analyzing your DNA. This usually takes 30-60 seconds.</p>
         <div className="space-y-4 bg-slate-950/50 p-6 rounded-3xl border border-slate-800 text-left">
           <div className="flex items-center gap-3"><Loader2 className="w-4 h-4 text-blue-500 animate-spin" /><span className="text-[10px] font-black uppercase tracking-widest text-slate-300">Strategy Matrix Generation</span></div>
           <div className="flex items-center gap-3 opacity-50"><Target className="w-4 h-4 text-slate-500" /><span className="text-[10px] font-black uppercase tracking-widest text-slate-500">Market Alignment Check</span></div>
@@ -305,9 +323,16 @@ export function StepperAssessment() {
   const currentQuestion = ASSESSMENT_QUESTIONS[currentStep];
 
   return (
-    <div className="max-w-3xl mx-auto space-y-8 animate-in slide-in-from-bottom-4 duration-500 px-4">
-      <div className="px-2 text-white text-left"><div className="flex justify-between items-end mb-4"><span className="text-[10px] font-black text-blue-500 uppercase tracking-[0.1em]">WPSTEC Engine v2.5</span><span className="text-[10px] font-black text-slate-600 tracking-widest italic">{Math.round(progress)}% Complete</span></div><Progress value={progress} className="h-1 bg-slate-900 rounded-full" /></div>
-      <Card className="p-8 md:p-12 bg-slate-900/60 border-slate-800 backdrop-blur-md min-h-[520px] flex flex-col justify-between shadow-2xl relative overflow-hidden rounded-[48px] text-left">
+    <div className="max-w-3xl mx-auto space-y-8 animate-in slide-in-from-bottom-4 duration-500 px-4 text-left">
+      <div className="px-2 text-white text-left">
+        <div className="flex justify-between items-end mb-4">
+          <span className="text-[10px] font-black text-blue-500 uppercase tracking-[0.1em]">WPSTEC Engine v2.5</span>
+          <span className="text-[10px] font-black text-slate-600 tracking-widest italic">{Math.round(progress)}% Complete</span>
+        </div>
+        <Progress value={progress} className="h-1 bg-slate-900 rounded-full" />
+      </div>
+
+      <Card className="p-8 md:p-12 bg-slate-900/60 border-slate-800 backdrop-blur-md min-h-[520px] flex flex-col justify-between shadow-2xl relative overflow-hidden rounded-[48px]">
         <div className="absolute top-0 right-0 w-48 h-48 bg-blue-600/5 blur-3xl -z-10" />
         <div className="flex-1 flex flex-col justify-center">
           <span className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.4em] mb-6 text-center opacity-60 italic tracking-widest uppercase leading-none">Cognitive Matrix</span>
@@ -315,14 +340,19 @@ export function StepperAssessment() {
           <div className="grid gap-4 max-w-xl mx-auto w-full">
             {currentQuestion.options.map((option, idx) => (
               <button key={idx} onClick={() => handleOptionSelect(currentQuestion.id, idx)} className={`w-full text-left p-5 rounded-[24px] border-2 transition-all duration-300 ${answers[currentQuestion.id] === idx ? "bg-blue-600/10 border-blue-500 text-white shadow-[0_0_40px_rgba(59,130,246,0.15)] scale-[1.01]" : "bg-slate-950/40 border-slate-800/50 text-slate-500 hover:border-slate-700 hover:text-slate-300"}`}>
-                <div className="flex items-center gap-5"><div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 transition-all ${answers[currentQuestion.id] === idx ? "border-blue-500 bg-blue-500 shadow-lg shadow-blue-500/50" : "border-slate-700"}`}>{answers[currentQuestion.id] === idx && <div className="w-1.5 h-1.5 bg-white rounded-full" />}</div><span className="font-bold text-sm md:text-base leading-tight tracking-tight text-white">{option.label}</span></div>
+                <div className="flex items-center gap-5">
+                  <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 transition-all ${answers[currentQuestion.id] === idx ? "border-blue-500 bg-blue-500 shadow-lg shadow-blue-500/50" : "border-slate-700"}`}>{answers[currentQuestion.id] === idx && <div className="w-1.5 h-1.5 bg-white rounded-full" />}</div>
+                  <span className="font-bold text-sm md:text-base leading-tight tracking-tight text-white">{option.label}</span>
+                </div>
               </button>
             ))}
           </div>
         </div>
         <div className="flex items-center justify-between mt-10 pt-8 border-t border-slate-800/50">
           <Button variant="ghost" onClick={prevStep} disabled={currentStep === 0} className="text-slate-500 hover:text-white hover:bg-slate-800/50 rounded-2xl px-8 h-12 text-xs font-black uppercase tracking-widest leading-none"><ArrowLeft className="w-4 h-4 mr-2" /> Prev</Button>
-          <Button onClick={nextStep} disabled={answers[currentQuestion.id] === undefined} className="bg-blue-600 hover:bg-blue-500 px-10 h-12 rounded-2xl text-xs font-black shadow-xl shadow-blue-500/20 uppercase tracking-[0.2em] transition-all active:scale-95 leading-none">{currentStep === totalQuestions - 1 ? "Finish Analysis" : "Next Step"} <ArrowRight className="w-4 h-4 ml-2" /></Button>
+          <Button onClick={nextStep} disabled={answers[currentQuestion.id] === undefined} className="bg-blue-600 hover:bg-blue-500 px-10 h-12 rounded-2xl text-xs font-black shadow-xl shadow-blue-500/20 uppercase tracking-[0.2em] transition-all active:scale-95 leading-none">
+            {currentStep === totalQuestions - 1 ? "Finish Analysis" : "Next Step"} <ArrowRight className="w-4 h-4 ml-2" />
+          </Button>
         </div>
       </Card>
     </div>
