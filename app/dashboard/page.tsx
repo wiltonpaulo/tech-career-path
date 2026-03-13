@@ -72,7 +72,12 @@ export default function UserDashboardPage() {
       setLoginError(error.message);
       setIsLoggingIn(false);
     } else {
-      // O listener onAuthStateChange cuidará da atualização da UI
+      // Força atualização manual imediata para evitar travamento na UI
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        setUser(user);
+        // getData() será chamado pelo useEffect assim que 'user' mudar
+      }
     }
   };
 

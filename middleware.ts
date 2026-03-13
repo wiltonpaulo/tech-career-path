@@ -4,7 +4,8 @@ import { NextResponse, type NextRequest } from 'next/server'
 export async function middleware(request: NextRequest) {
   // CRITICAL: Bypass middleware completely for Inngest to preserve query params (?fnId=...)
   if (request.nextUrl.pathname.startsWith('/api/inngest')) {
-    return NextResponse.next();
+    // Retorna explicitamente sem processar nada mais
+    return NextResponse.next(); 
   }
 
   let response = NextResponse.next({
@@ -51,6 +52,6 @@ export const config = {
      * - favicon.ico (favicon file)
      * Feel free to modify this pattern to include more paths.
      */
-    '/((?!api/inngest|_next/static|_next/image|favicon.ico).*)',
+    '/((?!api/inngest.*|_next/static|_next/image|favicon.ico).*)',
   ],
 }

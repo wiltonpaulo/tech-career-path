@@ -7,15 +7,11 @@ export async function POST(req: Request) {
     const body = await req.json();
     const { name, email, currentRole, answers, topMatches } = body;
     
-    console.log("DEBUG: Assessment Completion API Called", { email, name });
-
     if (!email) {
-      console.error("DEBUG: Missing email in body", body);
       return NextResponse.json({ error: "Missing email" }, { status: 400 });
     }
 
     // 1. Criar ou encontrar o usuário (baseado no email)
-    console.log("DEBUG: Upserting user in Prisma...");
     const user = await prisma.user.upsert({
       where: { email: email },
       update: { name: name },
@@ -24,10 +20,8 @@ export async function POST(req: Request) {
         name: name,
       },
     });
-    console.log("DEBUG: User upserted:", user.id);
 
     // 2. Salvar o Assessment no banco
-    console.log("DEBUG: Creating assessment in Prisma...");
     const assessment = await prisma.assessment.create({
       data: {
         userId: user.id,
@@ -37,10 +31,8 @@ export async function POST(req: Request) {
         status: 'PENDING',
       },
     });
-    console.log("DEBUG: Assessment created:", assessment.id);
 
     // 3. Disparar a fila do Inngest em background
-    console.log("DEBUG: Sending event to Inngest...");
     await inngest.send({
       name: "assessment/completed",
       data: {
@@ -50,7 +42,6 @@ export async function POST(req: Request) {
         topMatches: topMatches,
       },
     });
-    console.log("DEBUG: Inngest event sent!");
 
     return NextResponse.json({ 
       success: true, 
