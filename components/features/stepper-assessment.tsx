@@ -7,14 +7,14 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Input } from '@/components/ui/input';
-import { 
-  ArrowLeft, 
-  ArrowRight, 
-  CheckCircle2, 
-  Loader2, 
-  Sparkles, 
-  BookOpen, 
-  GraduationCap, 
+import {
+  ArrowLeft,
+  ArrowRight,
+  CheckCircle2,
+  Loader2,
+  Sparkles,
+  BookOpen,
+  GraduationCap,
   Target,
   FileDown,
   Star,
@@ -26,9 +26,7 @@ import {
   Mail,
   Lock,
   User as UserIcon,
-  BrainCircuit
 } from 'lucide-react';
-import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
 
 export function StepperAssessment() {
@@ -50,9 +48,7 @@ export function StepperAssessment() {
   const [topMatches, setTopMatches] = useState<string[]>([]);
   const [activeTab, setActiveTab] = useState('breakdown');
 
-  const pdfCaptureRef = useRef<HTMLDivElement>(null);
   // Tracks when the user naturally navigated to registration (vs returning from OAuth/email redirect).
-  // The auto-submit should NOT fire in the natural case (user still needs to fill currentRole).
   const didNaturallyReachRegistration = useRef(false);
 
   const totalQuestions = ASSESSMENT_QUESTIONS.length;
@@ -162,7 +158,7 @@ export function StepperAssessment() {
           clearInterval(interval);
           setFinalReport(data.report);
           setPhase('results');
-          localStorage.removeItem('assessment_answers'); 
+          localStorage.removeItem('assessment_answers');
           // Nota: Mantemos o assessment_id para permitir refresh na tela de resultados
         } else if (data.status === 'FAILED') {
           clearInterval(interval);
@@ -228,9 +224,6 @@ export function StepperAssessment() {
   };
 
   // EFEITO PARA AUTO-SUBMISSÃO APÓS LOGIN VIA OAUTH (ex: GitHub redirect)
-  // Só dispara quando o usuário retorna de um redirect externo (OAuth), não quando
-  // navega naturalmente pelas perguntas do assessment (nesse caso, didNaturallyReachRegistration=true).
-  // O fluxo de e-mail usa a estratégia "save-first" + fase 'email_sent', então também não entra aqui.
   useEffect(() => {
     const hasAnswers = Object.keys(answers).length > 0;
     const isRegistrationPhase = phase === 'registration';
@@ -240,10 +233,8 @@ export function StepperAssessment() {
     if (isLoggedIn && isRegistrationPhase && hasAnswers && !assessmentId && !isSubmitting && isOAuthReturn) {
       handleRegistration();
     }
-  }, [session, phase, answers, assessmentId]); // Dependências controladas para evitar loop
+  }, [session, phase, answers, assessmentId]);
 
-  // Quando o usuário confirma o e-mail e retorna sem ?id na URL (edge case),
-  // a fase 'email_sent' + sessão ativa + assessmentId já salvo = ir direto para processamento.
   useEffect(() => {
     if (phase === 'email_sent' && session?.user && assessmentId) {
       setPhase('processing');
@@ -264,9 +255,6 @@ export function StepperAssessment() {
     setError(null);
     setIsSubmitting(true);
 
-    // 1. ESTRATÉGIA SAVE-FIRST:
-    // Salvamos as respostas no banco ANTES de iniciar o fluxo de Auth.
-    // Isso garante que temos um ID persistente para passar no link.
     let savedAssessmentId: string | null = null;
 
     try {
@@ -274,13 +262,12 @@ export function StepperAssessment() {
       const topScores = calculateTopScores();
       setTopMatches(matches);
 
-      // Salva o rascunho no banco
       const saveResponse = await fetch('/api/assessment/complete', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ...userData, email, answers, topMatches: matches, topMatchesScores: topScores }),
       });
-      
+
       const saveData = await saveResponse.json();
       if (saveData.success && saveData.assessmentId) {
         savedAssessmentId = saveData.assessmentId;
@@ -289,7 +276,6 @@ export function StepperAssessment() {
       }
 
       if (authMode === 'signup') {
-        // Constrói a URL de retorno mantendo a página atual e adicionando o ID
         const redirectUrl = new URL(window.location.href);
         if (savedAssessmentId) {
           redirectUrl.searchParams.set('id', savedAssessmentId);
@@ -304,14 +290,11 @@ export function StepperAssessment() {
           }
         });
         if (err) throw err;
-        // Transition to a dedicated phase so the form can't be resubmitted
-        // and the auto-submit effect won't fire on return.
         setPhase('email_sent');
       } else {
         const { error: err } = await supabase.auth.signInWithPassword({ email, password });
         if (err) throw err;
-        
-        // Se for login normal (senha) e já salvamos, vamos direto para o processamento
+
         if (savedAssessmentId) {
           setPhase('processing');
           startPolling(savedAssessmentId);
@@ -320,25 +303,303 @@ export function StepperAssessment() {
     } catch (err: any) { setError(err.message); } finally { setIsSubmitting(false); }
   };
 
+  // ─── PDF GENERATION (jsPDF text-based, with cover + TOC) ───────────────────
   const generateMultipagePdf = async () => {
-    if (!pdfCaptureRef.current) return;
     setIsGeneratingPdf(true);
-    const element = pdfCaptureRef.current;
-    element.style.display = 'block';
     try {
       const pdf = new jsPDF('p', 'mm', 'a4');
-      const pages = element.querySelectorAll('.pdf-page');
-      for (let i = 0; i < pages.length; i++) {
-        const page = pages[i] as HTMLElement;
-        const canvas = await html2canvas(page, { scale: 2, backgroundColor: '#ffffff', useCORS: true });
-        const imgData = canvas.toDataURL('image/png');
-        const pdfWidth = pdf.internal.pageSize.getWidth();
-        const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
-        if (i > 0) pdf.addPage();
-        pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+      const W = 210;
+      const H = 297;
+      const ml = 20;
+      const mr = 20;
+      const mt = 28;
+      const mb = 22;
+      const cw = W - ml - mr;
+
+      let pageNum = 1;
+      const totalPages = tabs.length + 2; // cover + toc + sections
+
+      const drawHeader = (_title: string) => {
+        pdf.setFillColor(248, 250, 252);
+        pdf.rect(0, 0, W, 18, 'F');
+        pdf.setFontSize(7);
+        pdf.setFont('helvetica', 'bold');
+        pdf.setTextColor(100, 116, 139);
+        pdf.text('CAREER ADVISOR  •  STRATEGIC CAREER REPORT  •  CONFIDENTIAL', ml, 11);
+        pdf.text(`${pageNum} / ${totalPages}`, W - mr, 11, { align: 'right' });
+        pdf.setDrawColor(226, 232, 240);
+        pdf.setLineWidth(0.3);
+        pdf.line(ml, 16, W - mr, 16);
+      };
+
+      const drawFooter = () => {
+        pdf.setDrawColor(226, 232, 240);
+        pdf.setLineWidth(0.3);
+        pdf.line(ml, H - 14, W - mr, H - 14);
+        pdf.setFontSize(7);
+        pdf.setFont('helvetica', 'normal');
+        pdf.setTextColor(148, 163, 184);
+        pdf.text('© 2026 WPS Technology Services LLC  •  Strategic Career Alignment', ml, H - 8);
+        pdf.text(new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }), W - mr, H - 8, { align: 'right' });
+      };
+
+      const newPage = () => {
+        pdf.addPage();
+        pageNum++;
+      };
+
+      const stripMarkdown = (text: string) =>
+        text
+          .replace(/\*\*(.*?)\*\*/g, '$1')
+          .replace(/\*(.*?)\*/g, '$1')
+          .replace(/\[(.*?)\]\(.*?\)/g, '$1')
+          .replace(/^#+\s*/, '')
+          .replace(/⭐/g, '★');
+
+      // ── COVER ──────────────────────────────────────────────────────────────
+      pdf.setFillColor(15, 23, 42);
+      pdf.rect(0, 0, W, H, 'F');
+
+      pdf.setFillColor(37, 99, 235);
+      pdf.rect(0, 0, W, 4, 'F');
+
+      pdf.setFont('helvetica', 'bold');
+      pdf.setFontSize(40);
+      pdf.setTextColor(255, 255, 255);
+      pdf.text('CAREER', W / 2, 100, { align: 'center' });
+      pdf.setTextColor(37, 99, 235);
+      pdf.text('ADVISOR', W / 2, 120, { align: 'center' });
+
+      pdf.setFontSize(11);
+      pdf.setFont('helvetica', 'normal');
+      pdf.setTextColor(148, 163, 184);
+      pdf.text('Strategic Career Alignment Report  •  Version 2.5', W / 2, 136, { align: 'center' });
+
+      pdf.setDrawColor(37, 99, 235);
+      pdf.setLineWidth(0.5);
+      pdf.line(W / 2 - 35, 148, W / 2 + 35, 148);
+
+      pdf.setFontSize(22);
+      pdf.setFont('helvetica', 'bold');
+      pdf.setTextColor(255, 255, 255);
+      pdf.text(userData.name || 'Professional', W / 2, 166, { align: 'center' });
+
+      if (userData.currentRole) {
+        pdf.setFontSize(11);
+        pdf.setFont('helvetica', 'normal');
+        pdf.setTextColor(100, 116, 139);
+        pdf.text(userData.currentRole, W / 2, 178, { align: 'center' });
       }
+
+      if (topMatches.length > 0) {
+        pdf.setFontSize(8);
+        pdf.setFont('helvetica', 'bold');
+        pdf.setTextColor(71, 85, 105);
+        pdf.text('TOP CAREER MATCHES', W / 2, 208, { align: 'center' });
+        topMatches.forEach((match, idx) => {
+          pdf.setFontSize(10);
+          pdf.setFont('helvetica', 'normal');
+          pdf.setTextColor(148, 163, 184);
+          pdf.text(match, W / 2, 220 + idx * 12, { align: 'center' });
+        });
+      }
+
+      pdf.setFontSize(8);
+      pdf.setFont('helvetica', 'normal');
+      pdf.setTextColor(71, 85, 105);
+      pdf.text(
+        new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }),
+        W / 2, H - 20, { align: 'center' }
+      );
+
+      pdf.setFillColor(37, 99, 235);
+      pdf.rect(0, H - 4, W, 4, 'F');
+
+      drawFooter();
+
+      // ── TABLE OF CONTENTS ──────────────────────────────────────────────────
+      newPage();
+      pdf.setFillColor(255, 255, 255);
+      pdf.rect(0, 0, W, H, 'F');
+      drawHeader('Table of Contents');
+      drawFooter();
+
+      pdf.setFontSize(22);
+      pdf.setFont('helvetica', 'bold');
+      pdf.setTextColor(15, 23, 42);
+      pdf.text('Table of Contents', ml, mt + 12);
+
+      pdf.setDrawColor(37, 99, 235);
+      pdf.setLineWidth(1);
+      pdf.line(ml, mt + 17, ml + 55, mt + 17);
+
+      let tocY = mt + 32;
+      tabs.forEach((tab, idx) => {
+        const sectionPage = idx + 3;
+        pdf.setFontSize(11);
+        pdf.setFont('helvetica', 'normal');
+        pdf.setTextColor(30, 41, 59);
+        pdf.text(`${idx + 1}.  ${tab.title}`, ml, tocY);
+
+        // dot leaders
+        const labelWidth = pdf.getTextWidth(`${idx + 1}.  ${tab.title}`);
+        const pageNumWidth = pdf.getTextWidth(`${sectionPage}`);
+        const dotAreaStart = ml + labelWidth + 3;
+        const dotAreaEnd = W - mr - pageNumWidth - 3;
+        pdf.setTextColor(203, 213, 225);
+        pdf.setFontSize(9);
+        let dotX = dotAreaStart;
+        while (dotX < dotAreaEnd) {
+          pdf.text('.', dotX, tocY);
+          dotX += 2.2;
+        }
+
+        pdf.setFontSize(11);
+        pdf.setFont('helvetica', 'bold');
+        pdf.setTextColor(37, 99, 235);
+        pdf.text(`${sectionPage}`, W - mr, tocY, { align: 'right' });
+        tocY += 16;
+      });
+
+      // ── SECTION PAGES ──────────────────────────────────────────────────────
+      for (const tab of tabs) {
+        newPage();
+        pdf.setFillColor(255, 255, 255);
+        pdf.rect(0, 0, W, H, 'F');
+        drawHeader(tab.title);
+        drawFooter();
+
+        // Section title banner
+        pdf.setFillColor(239, 246, 255);
+        pdf.rect(ml, mt, cw, 16, 'F');
+        pdf.setDrawColor(37, 99, 235);
+        pdf.setLineWidth(0.8);
+        pdf.line(ml, mt, ml, mt + 16);
+        pdf.setFontSize(14);
+        pdf.setFont('helvetica', 'bold');
+        pdf.setTextColor(15, 23, 42);
+        pdf.text(tab.title.toUpperCase(), ml + 5, mt + 11);
+
+        let y = mt + 26;
+        const sectionLines = reportSections[tab.id] || [];
+
+        const checkNewPage = (needed: number) => {
+          if (y + needed > H - mb) {
+            newPage();
+            pdf.setFillColor(255, 255, 255);
+            pdf.rect(0, 0, W, H, 'F');
+            drawHeader(tab.title);
+            drawFooter();
+            y = mt;
+          }
+        };
+
+        for (const line of sectionLines) {
+          // empty line
+          if (!line.trim()) {
+            y += 3;
+            continue;
+          }
+
+          // table separator — skip
+          if (/^\|[-| :]+\|$/.test(line.trim())) continue;
+
+          // table row
+          if (line.trim().startsWith('|') && line.trim().endsWith('|')) {
+            const cells = line.trim().replace(/^\||\|$/g, '').split('|').map(c => stripMarkdown(c.trim()));
+            const colW = cw / Math.max(cells.length, 1);
+            checkNewPage(9);
+            pdf.setFillColor(241, 245, 249);
+            pdf.rect(ml, y - 5, cw, 8, 'F');
+            pdf.setDrawColor(226, 232, 240);
+            pdf.setLineWidth(0.2);
+            pdf.rect(ml, y - 5, cw, 8);
+            pdf.setFontSize(8);
+            pdf.setFont('helvetica', 'normal');
+            pdf.setTextColor(71, 85, 105);
+            cells.forEach((cell, ci) => {
+              pdf.text(cell.substring(0, 28), ml + ci * colW + 2, y);
+            });
+            y += 9;
+            continue;
+          }
+
+          // h3 heading
+          if (line.startsWith('### ') || line.startsWith('## ')) {
+            const heading = stripMarkdown(line.replace(/^#+\s*/, ''));
+            const wrapped = pdf.splitTextToSize(heading, cw);
+            checkNewPage(wrapped.length * 6 + 8);
+            y += 4;
+            pdf.setFontSize(12);
+            pdf.setFont('helvetica', 'bold');
+            pdf.setTextColor(15, 23, 42);
+            pdf.text(wrapped, ml, y);
+            y += wrapped.length * 6 + 3;
+            continue;
+          }
+
+          // bullet list
+          if (line.startsWith('- ') || line.startsWith('* ')) {
+            const text = stripMarkdown(line.replace(/^[-*]\s+/, ''));
+            const wrapped = pdf.splitTextToSize(text, cw - 8);
+            checkNewPage(wrapped.length * 5 + 2);
+            pdf.setFontSize(10);
+            pdf.setFont('helvetica', 'normal');
+            pdf.setTextColor(37, 99, 235);
+            pdf.text('•', ml + 1, y);
+            pdf.setTextColor(55, 65, 81);
+            pdf.text(wrapped, ml + 6, y);
+            y += wrapped.length * 5 + 2;
+            continue;
+          }
+
+          // numbered list
+          if (/^\d+\.\s/.test(line)) {
+            const text = stripMarkdown(line);
+            const wrapped = pdf.splitTextToSize(text, cw - 8);
+            checkNewPage(wrapped.length * 5 + 2);
+            pdf.setFontSize(10);
+            pdf.setFont('helvetica', 'normal');
+            pdf.setTextColor(55, 65, 81);
+            pdf.text(wrapped, ml + 4, y);
+            y += wrapped.length * 5 + 2;
+            continue;
+          }
+
+          // star rating
+          if (line.includes('⭐')) {
+            const starCount = (line.match(/⭐/g) || []).length;
+            const label = stripMarkdown(line.replace(/^- /, '').split(':')[0]);
+            checkNewPage(8);
+            pdf.setFontSize(10);
+            pdf.setFont('helvetica', 'bold');
+            pdf.setTextColor(30, 41, 59);
+            pdf.text(label, ml, y);
+            pdf.setTextColor(234, 179, 8);
+            pdf.text('★'.repeat(starCount) + '☆'.repeat(5 - starCount), W - mr, y, { align: 'right' });
+            y += 8;
+            continue;
+          }
+
+          // regular paragraph
+          const cleanLine = stripMarkdown(line);
+          if (!cleanLine.trim()) { y += 2; continue; }
+          const wrapped = pdf.splitTextToSize(cleanLine, cw);
+          checkNewPage(wrapped.length * 5 + 3);
+          pdf.setFontSize(10);
+          pdf.setFont('helvetica', 'normal');
+          pdf.setTextColor(55, 65, 81);
+          pdf.text(wrapped, ml, y);
+          y += wrapped.length * 5 + 3;
+        }
+      }
+
       pdf.save(`WPSTEC_Strategic_Report_${userData.name || 'Professional'}.pdf`);
-    } catch (error) { console.error(error); } finally { element.style.display = 'none'; setIsGeneratingPdf(false); }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsGeneratingPdf(false);
+    }
   };
 
   const prevStep = () => { if (currentStep > 0) setCurrentStep(currentStep - 1); };
@@ -428,25 +689,197 @@ export function StepperAssessment() {
 
   if (phase === 'results') {
     const currentLines = reportSections[activeTab] || [];
+
+    // ── inline markdown → HTML (bold, italic, links) ─────────────────────────
+    const formatInline = (text: string) =>
+      text
+        .replace(/\*\*(.*?)\*\*/g, '<strong class="text-white font-black">$1</strong>')
+        .replace(/\*(.*?)\*/g, '<em class="text-slate-200 italic">$1</em>')
+        .replace(/\[(.*?)\]\((.*?)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer" class="text-blue-400 underline hover:text-blue-300 transition-colors">$1</a>');
+
+    // ── group lines into rich elements ────────────────────────────────────────
+    const renderLines = (lines: string[]) => {
+      const elements: React.ReactNode[] = [];
+      let i = 0;
+
+      while (i < lines.length) {
+        const line = lines[i];
+
+        // empty line → small spacer
+        if (!line.trim()) {
+          elements.push(<div key={`sp-${i}`} className="h-2" />);
+          i++;
+          continue;
+        }
+
+        // table separator — skip
+        if (/^\|[-| :]+\|$/.test(line.trim())) {
+          i++;
+          continue;
+        }
+
+        // table row — collect consecutive rows
+        if (line.trim().startsWith('|') && line.trim().endsWith('|')) {
+          const rows: string[][] = [];
+          while (i < lines.length && lines[i].trim().startsWith('|')) {
+            if (/^\|[-| :]+\|$/.test(lines[i].trim())) {
+              i++;
+              continue;
+            }
+            const cells = lines[i].trim().replace(/^\||\|$/g, '').split('|').map(c => c.trim());
+            rows.push(cells);
+            i++;
+          }
+          elements.push(
+            <div key={`tbl-${i}`} className="overflow-x-auto my-6 rounded-2xl border border-slate-800">
+              <table className="w-full text-sm border-collapse">
+                <tbody>
+                  {rows.map((row, ri) => (
+                    <tr key={ri} className={ri === 0 ? 'bg-slate-800' : 'border-t border-slate-800/50 hover:bg-slate-900/50 transition-colors'}>
+                      {row.map((cell, ci) => (
+                        ri === 0
+                          ? <th key={ci} className="px-4 py-3 text-left text-xs font-black uppercase tracking-wider text-slate-300" dangerouslySetInnerHTML={{ __html: formatInline(cell) }} />
+                          : <td key={ci} className="px-4 py-3 text-slate-300 leading-relaxed" dangerouslySetInnerHTML={{ __html: formatInline(cell) }} />
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          );
+          continue;
+        }
+
+        // h3 subheading
+        if (line.startsWith('### ') || (line.startsWith('## ') && !line.match(/^## \d+\./))) {
+          const text = line.replace(/^#+\s*/, '');
+          elements.push(
+            <h3 key={`h3-${i}`} className="text-xl font-black text-white mt-8 mb-3 tracking-tight italic" dangerouslySetInnerHTML={{ __html: formatInline(text) }} />
+          );
+          i++;
+          continue;
+        }
+
+        // h4 subheading
+        if (line.startsWith('#### ')) {
+          const text = line.replace('#### ', '');
+          elements.push(
+            <h4 key={`h4-${i}`} className="text-base font-bold text-blue-400 mt-5 mb-2" dangerouslySetInnerHTML={{ __html: formatInline(text) }} />
+          );
+          i++;
+          continue;
+        }
+
+        // bullet list — collect consecutive items
+        if (line.startsWith('- ') || line.startsWith('* ')) {
+          const items: string[] = [];
+          while (i < lines.length && (lines[i].startsWith('- ') || lines[i].startsWith('* '))) {
+            items.push(lines[i].replace(/^[-*]\s+/, ''));
+            i++;
+          }
+          elements.push(
+            <ul key={`ul-${i}`} className="space-y-2 my-4 pl-0">
+              {items.map((item, j) => (
+                <li key={j} className="flex items-start gap-3 text-slate-300 text-sm md:text-base leading-relaxed">
+                  <span className="text-blue-500 mt-1 shrink-0 font-black text-base">•</span>
+                  <span dangerouslySetInnerHTML={{ __html: formatInline(item) }} />
+                </li>
+              ))}
+            </ul>
+          );
+          continue;
+        }
+
+        // numbered list — collect consecutive items
+        if (/^\d+\.\s/.test(line)) {
+          const items: string[] = [];
+          while (i < lines.length && /^\d+\.\s/.test(lines[i])) {
+            items.push(lines[i].replace(/^\d+\.\s+/, ''));
+            i++;
+          }
+          elements.push(
+            <ol key={`ol-${i}`} className="space-y-3 my-4 pl-0">
+              {items.map((item, j) => (
+                <li key={j} className="flex items-start gap-3 text-slate-300 text-sm md:text-base leading-relaxed">
+                  <span className="text-blue-500 font-black shrink-0 w-6 text-right tabular-nums">{j + 1}.</span>
+                  <span dangerouslySetInnerHTML={{ __html: formatInline(item) }} />
+                </li>
+              ))}
+            </ol>
+          );
+          continue;
+        }
+
+        // star rating card
+        if (line.includes('⭐')) {
+          const starCount = (line.match(/⭐/g) || []).length;
+          const label = line.replace(/^- /, '').split(':')[0].replace(/⭐/g, '').trim();
+          elements.push(
+            <div key={`star-${i}`} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-6 bg-slate-950/50 border border-slate-800 rounded-[24px] mb-3 hover:border-blue-500/30 transition-all">
+              <span className="text-base font-bold text-slate-200 italic">{label}</span>
+              <div className="flex gap-1.5 mt-3 sm:mt-0">
+                {[1, 2, 3, 4, 5].map(s => (
+                  <Star key={s} className={`w-5 h-5 ${s <= starCount ? 'text-yellow-500 fill-yellow-500' : 'text-slate-800'}`} />
+                ))}
+              </div>
+            </div>
+          );
+          i++;
+          continue;
+        }
+
+        // regular paragraph
+        elements.push(
+          <p key={`p-${i}`} className="leading-[1.9] text-slate-300 text-sm md:text-base font-medium animate-in fade-in" dangerouslySetInnerHTML={{ __html: formatInline(line) }} />
+        );
+        i++;
+      }
+
+      return elements;
+    };
+
     return (
       <div className="w-full max-w-7xl mx-auto animate-in fade-in duration-1000 pb-32 px-4 flex flex-col lg:flex-row gap-8 text-left">
-        <aside className="w-full lg:w-80 shrink-0"><Card className="bg-slate-900 border-slate-800 p-6 rounded-[32px] sticky top-24 shadow-2xl"><div className="flex items-center gap-4 mb-8 border-b border-slate-800 pb-6"><div className="p-3 bg-blue-600 rounded-2xl shadow-lg shadow-blue-500/20"><Briefcase className="w-6 h-6 text-white" /></div><div><h3 className="text-lg font-black text-white italic tracking-tighter leading-none uppercase">{userData.name}</h3><p className="text-[10px] text-blue-500 font-bold uppercase tracking-widest mt-1">Market DNA v2.5</p></div></div><nav className="flex flex-col gap-2">{tabs.map((tab) => (<button key={tab.id} onClick={() => setActiveTab(tab.id)} className={`flex items-center gap-3 px-5 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === tab.id ? "bg-blue-600 text-white shadow-xl scale-[1.02]" : "text-slate-500 hover:text-white hover:bg-slate-800"}`}><tab.icon className="w-4 h-4" />{tab.title}</button>))}</nav><Button onClick={generateMultipagePdf} disabled={isGeneratingPdf} className="w-full mt-8 h-12 bg-slate-800 hover:bg-slate-700 text-slate-300 font-black rounded-2xl transition-all active:scale-95 uppercase tracking-widest text-[9px]">{isGeneratingPdf ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <FileDown className="w-4 h-4 mr-2" />} Export Report</Button></Card></aside>
-        <main className="flex-1 min-w-0"><Card className="p-8 md:p-16 bg-slate-900/40 border-slate-800 shadow-2xl relative min-h-[700px] rounded-[48px] overflow-hidden backdrop-blur-sm"><div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-blue-600 via-indigo-500 to-emerald-500 opacity-50" /><div className="prose prose-invert max-w-none text-left"><div className="mb-12 border-b border-slate-800 pb-8 flex items-center gap-6 animate-in slide-in-from-left duration-500"><div className="p-4 bg-blue-600/10 rounded-2xl border border-blue-500/20">{React.createElement(tabs.find(t => t.id === activeTab)?.icon || Sparkles, { className: "w-10 h-10 text-blue-500" })}</div><h2 className="text-3xl md:text-5xl font-black text-white italic m-0 tracking-tighter uppercase leading-none">{tabs.find(t => t.id === activeTab)?.title}</h2></div><div className="space-y-6">
-          {currentLines.map((line, i) => {
-            if (line.trim() === '') return <div key={i} className="h-2" />;
-            if (line.includes('|') && line.includes('---')) return null;
-            if (line.includes('|')) return <div key={i} className="overflow-x-auto my-4 bg-slate-950/30 rounded-xl p-4 border border-slate-800 font-mono text-xs text-slate-400 whitespace-pre">{line}</div>;
-            if (line.includes('⭐')) {
-              const starCount = (line.match(/⭐/g) || []).length;
-              return (<div key={i} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-6 bg-slate-950/50 border border-slate-800 rounded-[24px] mb-4 shadow-inner group hover:border-blue-500/30 transition-all scale-in-center"><div className="flex flex-col gap-1"><span className="text-lg font-bold text-slate-200 italic">{line.replace('- ', '').split(':')[0]}</span></div><div className="flex gap-1.5 mt-4 sm:mt-0">{[1,2,3,4,5].map((s) => (<Star key={s} className={`w-5 h-5 ${s <= starCount ? "text-yellow-500 fill-yellow-500" : "text-slate-800"}`} />))}</div></div>);
-            }
-            const formattedLine = line.replace(/\*\*(.*?)\*\*/g, '<strong class="text-white font-black">$1</strong>').replace(/\[(.*?)\]\((.*?)\)/g, '<a href="$2" target=\"_blank\" class=\"text-blue-400 underline hover:text-blue-300 transition-colors\">$1</a>');
-            return <p key={i} className="leading-[1.8] text-slate-300 text-sm md:text-base opacity-90 font-medium text-balance animate-in fade-in" dangerouslySetInnerHTML={{ __html: formattedLine }} />;
-          })}
-        </div></div></Card></main>
-        <div style={{ position: 'absolute', left: '-9999px', top: '-9999px' }}><div ref={pdfCaptureRef} className="bg-white p-0 text-slate-900">
-          {tabs.map((tab, pageIdx) => (<div key={tab.id} className="pdf-page w-[210mm] min-h-[297mm] p-20 bg-white text-slate-900 flex flex-col relative overflow-hidden"><div className="flex justify-between items-start mb-12"><div className="flex items-center gap-3"><div className="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center"><BrainCircuit className="w-6 h-6 text-white" /></div><div className="font-black text-xl italic tracking-tighter uppercase text-slate-900">WPSTEC <span className="text-blue-600">PATH</span></div></div><div className="text-right"><div className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Confidential Strategy Report</div><div className="text-[8px] text-slate-300 font-bold uppercase tracking-widest mt-1">Version 2.5 • US Market DNA</div></div></div><div className="mb-8 flex items-center gap-4"><tab.icon className="w-8 h-8 text-blue-600" /><h2 className="text-3xl font-black italic tracking-tighter uppercase m-0 text-slate-900">{tab.title}</h2></div><div className="flex-1 text-sm leading-relaxed text-slate-600 space-y-4">{(reportSections[tab.id] || []).map((line, i) => (<p key={i} className="m-0 text-slate-700 text-left">{line.replace(/\*\*/g, '').replace(/\[(.*?)\]\(.*?\)/g, '$1')}</p>))}</div><div className="mt-12 pt-8 border-t border-slate-100 flex justify-between items-center"><div className="text-[8px] font-bold text-slate-300 uppercase tracking-widest">© 2026 WPS Technology Services LLC • Strategic Career Alignment</div><div className="text-[8px] font-black text-blue-600 uppercase tracking-widest italic">Page {pageIdx + 1} of {tabs.length}</div></div></div>))}
-        </div></div>
+        <aside className="w-full lg:w-80 shrink-0">
+          <Card className="bg-slate-900 border-slate-800 p-6 rounded-[32px] sticky top-24 shadow-2xl">
+            <div className="flex items-center gap-4 mb-8 border-b border-slate-800 pb-6">
+              <div className="p-3 bg-blue-600 rounded-2xl shadow-lg shadow-blue-500/20"><Briefcase className="w-6 h-6 text-white" /></div>
+              <div>
+                <h3 className="text-lg font-black text-white italic tracking-tighter leading-none uppercase">{userData.name}</h3>
+                <p className="text-[10px] text-blue-500 font-bold uppercase tracking-widest mt-1">Market DNA v2.5</p>
+              </div>
+            </div>
+            <nav className="flex flex-col gap-2">
+              {tabs.map(tab => (
+                <button key={tab.id} onClick={() => setActiveTab(tab.id)} className={`flex items-center gap-3 px-5 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === tab.id ? 'bg-blue-600 text-white shadow-xl scale-[1.02]' : 'text-slate-500 hover:text-white hover:bg-slate-800'}`}>
+                  <tab.icon className="w-4 h-4" />{tab.title}
+                </button>
+              ))}
+            </nav>
+            <Button onClick={generateMultipagePdf} disabled={isGeneratingPdf} className="w-full mt-8 h-12 bg-slate-800 hover:bg-slate-700 text-slate-300 font-black rounded-2xl transition-all active:scale-95 uppercase tracking-widest text-[9px]">
+              {isGeneratingPdf ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <FileDown className="w-4 h-4 mr-2" />} Export Report
+            </Button>
+          </Card>
+        </aside>
+
+        <main className="flex-1 min-w-0">
+          <Card className="p-8 md:p-16 bg-slate-900/40 border-slate-800 shadow-2xl relative min-h-[700px] rounded-[48px] overflow-hidden backdrop-blur-sm">
+            <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-blue-600 via-indigo-500 to-emerald-500 opacity-50" />
+            <div className="max-w-none text-left">
+              <div className="mb-12 border-b border-slate-800 pb-8 flex items-center gap-6 animate-in slide-in-from-left duration-500">
+                <div className="p-4 bg-blue-600/10 rounded-2xl border border-blue-500/20">
+                  {React.createElement(tabs.find(t => t.id === activeTab)?.icon || Sparkles, { className: 'w-10 h-10 text-blue-500' })}
+                </div>
+                <h2 className="text-3xl md:text-5xl font-black text-white italic m-0 tracking-tighter uppercase leading-none">
+                  {tabs.find(t => t.id === activeTab)?.title}
+                </h2>
+              </div>
+              <div className="space-y-2">
+                {renderLines(currentLines)}
+              </div>
+            </div>
+          </Card>
+        </main>
       </div>
     );
   }
