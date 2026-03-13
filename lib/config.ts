@@ -1,8 +1,8 @@
 export const BRAND_CONFIG = {
-  name: "Carrer Advisor",
+  name: "Career Advisor",
   author: "Wilton Paulo",
   company: "WPS Technology Services LLC",
-  shortCompany: "Carrer",
+  shortCompany: "Career",
   shortCompany2nd: "Advisor",
   year: "2026",
   tagline: "Bridging the Gap Between Talent and Operational Excellence",

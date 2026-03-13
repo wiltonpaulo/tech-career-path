@@ -1,12 +1,12 @@
-# Tech Career Path AI: Bridging the US Tech Talent Gap
+# Career Advisor: Bridging the US Tech Talent Gap
 
-[![Vercel Deployment](https://img.shields.io/badge/deployment-vercel-blue)](https://tech-career-path-ai.vercel.app/)
+[![Vercel Deployment](https://img.shields.io/badge/deployment-vercel-blue)](https://careeradvisor.wpstec.com/)
 
 ## 🇺🇸 Project Vision & National Interest
 
 The United States faces a critical shortage of high-skilled labor in key technology sectors. According to recent labor statistics, by 2030, the U.S. could face a deficit of over **1.2 million IT professionals** in areas such as **Cloud Infrastructure, Cybersecurity, Data Engineering, and Artificial Intelligence**.
 
-**Tech Career Path AI** is an advanced career-steering platform designed to address this "Skills Gap" at scale. By leveraging Generative AI (Gemini) and predictive analytics, the system assesses the background of students and career-changers, identifying transferable skills and providing a data-driven roadmap to fill vacancies in high-demand, high-growth sectors critical to U.S. economic competitiveness and national security.
+**Career Advisor** is an advanced career-steering platform designed to address this "Skills Gap" at scale. By leveraging Generative AI (Gemini) and predictive analytics, the system assesses the background of students and career-changers, identifying transferable skills and providing a data-driven roadmap to fill vacancies in high-demand, high-growth sectors critical to U.S. economic competitiveness and national security.
 
 ---
 
