@@ -1,4 +1,5 @@
 import { serve } from "inngest/next";
+import { NextRequest } from "next/server";
 import { inngest } from "@/lib/inngest/client";
 import { generateCareerReport } from "@/lib/inngest/functions";
 
@@ -15,7 +16,7 @@ const inngestHandler = serve({
   ],
 });
 
-const handler = async (req: Request, context: any) => {
+const handler = async (req: NextRequest, context: any) => {
   console.log(`[Inngest Endpoint] Method: ${req.method} | URL: ${req.url}`);
   return inngestHandler(req, context);
 };
