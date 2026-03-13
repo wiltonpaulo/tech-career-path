@@ -226,14 +226,14 @@ export function StepperAssessment() {
 
     // 1. ESTRATÉGIA SAVE-FIRST:
     // Salvamos as respostas no banco ANTES de iniciar o fluxo de Auth.
-    // Isso gera um ID persistente que podemos passar no Magic Link.
+    // Isso garante que temos um ID persistente para passar no link.
     let savedAssessmentId: string | null = null;
-    
+
     try {
       const matches = calculateResults();
       setTopMatches(matches);
 
-      // Chamada API para salvar rascunho/assessment
+      // Salva o rascunho no banco
       const saveResponse = await fetch('/api/assessment/complete', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -243,20 +243,22 @@ export function StepperAssessment() {
       const saveData = await saveResponse.json();
       if (saveData.success && saveData.assessmentId) {
         savedAssessmentId = saveData.assessmentId;
-        setAssessmentId(savedAssessmentId); // Atualiza estado local para evitar duplicação
+        setAssessmentId(savedAssessmentId);
       }
 
       if (authMode === 'signup') {
+        // Constrói a URL de retorno mantendo a página atual e adicionando o ID
+        const redirectUrl = new URL(window.location.href);
+        if (savedAssessmentId) {
+          redirectUrl.searchParams.set('id', savedAssessmentId);
+        }
+
         const { error: err } = await supabase.auth.signUp({
           email,
           password,
           options: {
             data: { full_name: userData.name },
-            // AQUI ESTÁ O SEGREDO: Anexamos o ID no link de retorno
-            // Se o usuário abrir no celular, o ID estará na URL e o relatório carregará.
-            emailRedirectTo: savedAssessmentId 
-              ? `${window.location.origin}?id=${savedAssessmentId}`
-              : window.location.href
+            emailRedirectTo: redirectUrl.toString()
           }
         });
         if (err) throw err;
@@ -265,7 +267,7 @@ export function StepperAssessment() {
         const { error: err } = await supabase.auth.signInWithPassword({ email, password });
         if (err) throw err;
         
-        // Se for login por senha e já salvamos, vamos direto para o processamento
+        // Se for login normal (senha) e já salvamos, vamos direto para o processamento
         if (savedAssessmentId) {
           setPhase('processing');
           startPolling(savedAssessmentId);
