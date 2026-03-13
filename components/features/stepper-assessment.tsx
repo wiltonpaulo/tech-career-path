@@ -310,11 +310,12 @@ export function StepperAssessment() {
       const pdf = new jsPDF('p', 'mm', 'a4');
       const W = 210;
       const H = 297;
-      const ml = 20;
-      const mr = 20;
-      const mt = 28;
-      const mb = 22;
+      const ml = 22;
+      const mr = 22;
+      const mt = 30;   // top margin (below header)
+      const mb = 24;   // bottom margin (above footer)
       const cw = W - ml - mr;
+      const LH = 6;    // line height mm for body text (fontSize 10)
 
       let pageNum = 1;
       const totalPages = tabs.length + 2; // cover + toc + sections
@@ -538,18 +539,27 @@ export function StepperAssessment() {
             continue;
           }
 
-          // bullet list
-          if (line.startsWith('- ') || line.startsWith('* ')) {
-            const text = stripMarkdown(line.replace(/^[-*]\s+/, ''));
+          // bullet list — handles `- `, `* `, `• `, and standalone `•` + next line
+          const isPdfBullet = (l: string) =>
+            l.startsWith('- ') || l.startsWith('* ') || l.startsWith('• ') || l.trim() === '•';
+
+          if (isPdfBullet(line)) {
+            let text: string;
+            if (line.trim() === '•') {
+              text = '';
+            } else {
+              text = stripMarkdown(line.replace(/^[-*•]\s+/, ''));
+            }
+            if (!text.trim()) { continue; }
             const wrapped = pdf.splitTextToSize(text, cw - 8);
-            checkNewPage(wrapped.length * 5 + 2);
+            checkNewPage(wrapped.length * LH + 2);
             pdf.setFontSize(10);
             pdf.setFont('helvetica', 'normal');
             pdf.setTextColor(37, 99, 235);
             pdf.text('•', ml + 1, y);
             pdf.setTextColor(55, 65, 81);
-            pdf.text(wrapped, ml + 6, y);
-            y += wrapped.length * 5 + 2;
+            pdf.text(wrapped, ml + 7, y);
+            y += wrapped.length * LH + 2;
             continue;
           }
 
@@ -557,12 +567,12 @@ export function StepperAssessment() {
           if (/^\d+\.\s/.test(line)) {
             const text = stripMarkdown(line);
             const wrapped = pdf.splitTextToSize(text, cw - 8);
-            checkNewPage(wrapped.length * 5 + 2);
+            checkNewPage(wrapped.length * LH + 2);
             pdf.setFontSize(10);
             pdf.setFont('helvetica', 'normal');
             pdf.setTextColor(55, 65, 81);
             pdf.text(wrapped, ml + 4, y);
-            y += wrapped.length * 5 + 2;
+            y += wrapped.length * LH + 2;
             continue;
           }
 
@@ -570,14 +580,14 @@ export function StepperAssessment() {
           if (line.includes('⭐')) {
             const starCount = (line.match(/⭐/g) || []).length;
             const label = stripMarkdown(line.replace(/^- /, '').split(':')[0]);
-            checkNewPage(8);
+            checkNewPage(LH + 2);
             pdf.setFontSize(10);
             pdf.setFont('helvetica', 'bold');
             pdf.setTextColor(30, 41, 59);
             pdf.text(label, ml, y);
             pdf.setTextColor(234, 179, 8);
             pdf.text('★'.repeat(starCount) + '☆'.repeat(5 - starCount), W - mr, y, { align: 'right' });
-            y += 8;
+            y += LH + 2;
             continue;
           }
 
@@ -585,12 +595,12 @@ export function StepperAssessment() {
           const cleanLine = stripMarkdown(line);
           if (!cleanLine.trim()) { y += 2; continue; }
           const wrapped = pdf.splitTextToSize(cleanLine, cw);
-          checkNewPage(wrapped.length * 5 + 3);
+          checkNewPage(wrapped.length * LH + 3);
           pdf.setFontSize(10);
           pdf.setFont('helvetica', 'normal');
           pdf.setTextColor(55, 65, 81);
           pdf.text(wrapped, ml, y);
-          y += wrapped.length * 5 + 3;
+          y += wrapped.length * LH + 3;
         }
       }
 
@@ -770,13 +780,28 @@ export function StepperAssessment() {
           continue;
         }
 
-        // bullet list — collect consecutive items
-        if (line.startsWith('- ') || line.startsWith('* ')) {
+        // bullet list — handles: `- text`, `* text`, `• text`, standalone `•` + next line
+        const isBulletLine = (l: string) =>
+          l.startsWith('- ') || l.startsWith('* ') || l.startsWith('• ') || l.trim() === '•';
+
+        if (isBulletLine(line)) {
           const items: string[] = [];
-          while (i < lines.length && (lines[i].startsWith('- ') || lines[i].startsWith('* '))) {
-            items.push(lines[i].replace(/^[-*]\s+/, ''));
-            i++;
+          while (i < lines.length && isBulletLine(lines[i])) {
+            const curr = lines[i];
+            if (curr.trim() === '•') {
+              // standalone bullet marker — next non-empty line is the content
+              i++;
+              while (i < lines.length && !lines[i].trim()) i++;
+              if (i < lines.length && !isBulletLine(lines[i]) && !lines[i].startsWith('#')) {
+                items.push(lines[i]);
+                i++;
+              }
+            } else {
+              items.push(curr.replace(/^[-*•]\s+/, ''));
+              i++;
+            }
           }
+          if (items.length === 0) continue;
           elements.push(
             <ul key={`ul-${i}`} className="space-y-2 my-4 pl-0">
               {items.map((item, j) => (
