@@ -4,6 +4,7 @@ import { NextResponse, type NextRequest } from 'next/server'
 export async function middleware(request: NextRequest) {
   // CRITICAL: Retorna imediatamente se for a rota do Inngest
   if (request.nextUrl.pathname.includes('/api/inngest')) {
+    console.log(`[Middleware] Skipping middleware for Inngest route: ${request.nextUrl.toString()}`);
     return NextResponse.next();
   }
 

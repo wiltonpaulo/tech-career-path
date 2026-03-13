@@ -16,6 +16,7 @@ export async function POST(req: Request) {
     }
 
     // Disparar o Inngest manualmente
+    console.log(`[Admin] Manually retrying assessment: ${assessment.id}`);
     await inngest.send({
       name: "assessment/completed",
       data: {
@@ -25,6 +26,7 @@ export async function POST(req: Request) {
         topMatches: assessment.topMatches,
       },
     });
+    console.log(`[Admin] Retry event sent.`);
 
     return NextResponse.json({ success: true });
   } catch (error) {

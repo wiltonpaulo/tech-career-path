@@ -33,6 +33,7 @@ export async function POST(req: Request) {
     });
 
     // 3. Disparar a fila do Inngest em background
+    console.log(`[API] Sending Inngest event 'assessment/completed' for Assessment ID: ${assessment.id}`);
     await inngest.send({
       name: "assessment/completed",
       data: {
@@ -42,6 +43,7 @@ export async function POST(req: Request) {
         topMatches: topMatches,
       },
     });
+    console.log(`[API] Inngest event sent successfully.`);
 
     return NextResponse.json({ 
       success: true, 

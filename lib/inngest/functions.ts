@@ -8,9 +8,11 @@ export const generateCareerReport = inngest.createFunction(
   { event: "assessment/completed" },
   async ({ event, step }) => {
     const { assessmentId, name, currentRole, topMatches } = event.data;
+    console.log(`[Inngest Function] Started processing for Assessment ID: ${assessmentId}, User: ${name}`);
 
     // 1. Marcar como processando no banco
     await step.run("update-status-processing", async () => {
+      console.log(`[Inngest Step] Running 'update-status-processing'`);
       await prisma.assessment.update({
         where: { id: assessmentId },
         data: { status: 'PROCESSING' }
@@ -19,7 +21,7 @@ export const generateCareerReport = inngest.createFunction(
 
     // 2. Chamar a IA
     const reportText = await step.run("generate-ai-report", async () => {
-      console.log(`>>> [DEBUG] Generating AI Report for ${name}...`);
+      console.log(`[Inngest Step] Generating AI Report for ${name}...`);
       const prompt = `
         Act as a Senior US Tech Career Strategist specializing in career pivots for beginners. 
         Generate a professional "Career Integration Report" for ${name}, transitioning from "${currentRole}".
@@ -51,15 +53,15 @@ export const generateCareerReport = inngest.createFunction(
         prompt: prompt,
       });
 
-      console.log(`>>> [DEBUG] AI Response received. Length: ${text?.length || 0} characters.`);
+      console.log(`[Inngest Step] AI Response received. Length: ${text?.length || 0} characters.`);
       return text;
     });
 
     // 3. Salvar o relatório
     await step.run("save-report-final", async () => {
-      console.log(`>>> [DEBUG] Attempting to save report to DB for ID: ${assessmentId}`);
+      console.log(`[Inngest Step] Attempting to save report to DB for ID: ${assessmentId}`);
       if (!reportText || reportText.length < 10) {
-        console.error(">>> [ERROR] Report text is too short or empty. Skipping save.");
+        console.error("[Inngest Error] Report text is too short or empty. Skipping save.");
         throw new Error("AI generated an empty report.");
       }
 
@@ -77,9 +79,9 @@ export const generateCareerReport = inngest.createFunction(
           data: { status: 'COMPLETED' }
         })
       ]);
-      console.log(`>>> [SUCCESS] Report saved successfully: ${assessmentId}`);
+      console.log(`[Inngest Step] Report saved successfully: ${assessmentId}`);
     });
 
-    return { status: "success", assessmentId };
+    return { status: "success", assessmentId, processedAt: new Date().toISOString() };
   }
 );

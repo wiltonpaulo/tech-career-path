@@ -8,11 +8,16 @@ export const maxDuration = 60;
 // Isso resolve o erro "No function ID found in request"
 export const dynamic = "force-dynamic";
 
-const handler = serve({
+const inngestHandler = serve({
   client: inngest,
   functions: [
     generateCareerReport,
   ],
 });
+
+const handler = async (req: Request, ...args: any[]) => {
+  console.log(`[Inngest Endpoint] Method: ${req.method} | URL: ${req.url}`);
+  return inngestHandler(req, ...args);
+};
 
 export { handler as GET, handler as POST, handler as PUT };
