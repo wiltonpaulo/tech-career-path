@@ -16,7 +16,7 @@ Built with a focus on performance, scalability, and ethical AI, the project util
 
 - **Framework:** Next.js (App Router) for Server-Side Rendering (SSR) and optimized SEO.
 - **Language:** TypeScript (Strict Mode) for type-safe, maintainable enterprise code.
-- **AI Integration:** Vercel AI SDK + Google Gemini Pro for real-time career assessment.
+- **AI Integration:** Vercel AI SDK + Google Gemini Pro for automated career report generation.
 - **Styling:** Tailwind CSS + shadcn/ui for a modern, accessible user interface.
 - **Automation:** GitHub Actions for Continuous Integration (CI) and Deployment (CD).
 

@@ -7,10 +7,11 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { BRAND_CONFIG } from '@/lib/config';
 import { createClient } from '@/lib/supabase/client';
+import { User } from '@supabase/supabase-js';
 
 export default function Home() {
   const supabase = createClient();
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<User | null>(null);
 
   useEffect(() => {
     const getUser = async () => {
