@@ -6,7 +6,7 @@ export async function POST(req: Request) {
   try {
     const body = await req.json();
     const { name, email, currentRole, answers, topMatches } = body;
-
+    
     console.log("DEBUG: Assessment Completion API Called", { email, name });
 
     if (!email) {
@@ -59,9 +59,9 @@ export async function POST(req: Request) {
 
   } catch (error: any) {
     console.error("CRITICAL ERROR: Failed to complete assessment:", error);
-    return NextResponse.json({
-      error: "Internal Server Error",
-      details: error.message
+    return NextResponse.json({ 
+      error: "Internal Server Error", 
+      details: error.message 
     }, { status: 500 });
   }
 }
