@@ -41,7 +41,7 @@ export function StepperAssessment() {
 
   const [currentStep, setCurrentStep] = useState(0);
   const [answers, setAnswers] = useState<Record<number, number>>({});
-  const [phase, setPhase] = useState<'testing' | 'registration' | 'processing' | 'results' | 'error'>('testing');
+  const [phase, setPhase] = useState<'testing' | 'registration' | 'email_sent' | 'processing' | 'results' | 'error'>('testing');
   const [assessmentId, setAssessmentId] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
@@ -51,6 +51,9 @@ export function StepperAssessment() {
   const [activeTab, setActiveTab] = useState('summary');
 
   const pdfCaptureRef = useRef<HTMLDivElement>(null);
+  // Tracks when the user naturally navigated to registration (vs returning from OAuth/email redirect).
+  // The auto-submit should NOT fire in the natural case (user still needs to fill currentRole).
+  const didNaturallyReachRegistration = useRef(false);
 
   const totalQuestions = ASSESSMENT_QUESTIONS.length;
   const progress = ((currentStep + 1) / totalQuestions) * 100;
@@ -203,18 +206,29 @@ export function StepperAssessment() {
     } catch (error) { setPhase('error'); } finally { setIsSubmitting(false); }
   };
 
-  // EFEITO PARA AUTO-SUBMISSÃO APÓS LOGIN/VALIDAÇÃO DE EMAIL
-  // Se o usuário voltar do fluxo de email e já tivermos as respostas no LocalStorage,
-  // submetemos automaticamente.
+  // EFEITO PARA AUTO-SUBMISSÃO APÓS LOGIN VIA OAUTH (ex: GitHub redirect)
+  // Só dispara quando o usuário retorna de um redirect externo (OAuth), não quando
+  // navega naturalmente pelas perguntas do assessment (nesse caso, didNaturallyReachRegistration=true).
+  // O fluxo de e-mail usa a estratégia "save-first" + fase 'email_sent', então também não entra aqui.
   useEffect(() => {
     const hasAnswers = Object.keys(answers).length > 0;
     const isRegistrationPhase = phase === 'registration';
     const isLoggedIn = !!session?.user;
-    
-    if (isLoggedIn && isRegistrationPhase && hasAnswers && !assessmentId && !isSubmitting) {
+    const isOAuthReturn = !didNaturallyReachRegistration.current;
+
+    if (isLoggedIn && isRegistrationPhase && hasAnswers && !assessmentId && !isSubmitting && isOAuthReturn) {
       handleRegistration();
     }
   }, [session, phase, answers, assessmentId]); // Dependências controladas para evitar loop
+
+  // Quando o usuário confirma o e-mail e retorna sem ?id na URL (edge case),
+  // a fase 'email_sent' + sessão ativa + assessmentId já salvo = ir direto para processamento.
+  useEffect(() => {
+    if (phase === 'email_sent' && session?.user && assessmentId) {
+      setPhase('processing');
+      startPolling(assessmentId);
+    }
+  }, [phase, session, assessmentId]);
 
   const handleGithubLogin = async () => {
     localStorage.setItem('assessment_phase', 'registration');
@@ -268,7 +282,9 @@ export function StepperAssessment() {
           }
         });
         if (err) throw err;
-        alert("Verification email sent! Confirm it to see your results.");
+        // Transition to a dedicated phase so the form can't be resubmitted
+        // and the auto-submit effect won't fire on return.
+        setPhase('email_sent');
       } else {
         const { error: err } = await supabase.auth.signInWithPassword({ email, password });
         if (err) throw err;
@@ -308,6 +324,7 @@ export function StepperAssessment() {
     if (currentStep < totalQuestions - 1) {
       setCurrentStep(currentStep + 1);
     } else {
+      didNaturallyReachRegistration.current = true;
       setPhase('registration');
     }
   };
@@ -353,6 +370,21 @@ export function StepperAssessment() {
             <Button type="submit" disabled={isSubmitting} className="w-full bg-blue-600 hover:bg-blue-500 h-14 text-base font-black shadow-lg shadow-blue-500/20 mt-4 rounded-2xl">{isSubmitting ? <Loader2 className="w-6 h-6 animate-spin" /> : "Access Final Report"}</Button>
           </form>
         )}
+      </Card>
+    );
+  }
+
+  if (phase === 'email_sent') {
+    return (
+      <Card className="p-8 md:p-12 bg-slate-900 border-slate-800 max-w-xl mx-auto shadow-2xl rounded-[40px] text-white text-center">
+        <div className="p-4 bg-blue-600 rounded-3xl w-fit mx-auto mb-6 shadow-xl shadow-blue-500/20">
+          <Mail className="w-8 h-8" />
+        </div>
+        <h2 className="text-3xl font-black italic tracking-tighter leading-none uppercase text-white mb-3">Check Your Email</h2>
+        <p className="text-slate-400 text-sm italic">
+          We sent a confirmation link to <span className="text-white font-bold">{userData.email || email}</span>.
+        </p>
+        <p className="text-slate-500 text-xs mt-3">Click the link in the email to confirm your account and access your report.</p>
       </Card>
     );
   }
