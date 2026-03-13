@@ -18,9 +18,11 @@ import {
   Lock
 } from 'lucide-react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 
 export default function UserDashboardPage() {
   const supabase = createClient();
+  const router = useRouter();
   const [assessments, setAssessments] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [user, setUser] = useState<any>(null);
@@ -38,11 +40,21 @@ export default function UserDashboardPage() {
         const res = await fetch('/api/user/assessments');
         const data = await res.json();
         setAssessments(data);
+      } else {
+        setAssessments([]);
       }
       setIsLoading(false);
     };
 
     getData();
+
+    // Adiciona listener para atualizar a tela automaticamente após login/logout
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null);
+      if (session?.user) getData();
+    });
+
+    return () => subscription.unsubscribe();
   }, [supabase]);
 
   const handleLogout = async () => {
@@ -59,6 +71,8 @@ export default function UserDashboardPage() {
     if (error) {
       setLoginError(error.message);
       setIsLoggingIn(false);
+    } else {
+      // O listener onAuthStateChange cuidará da atualização da UI
     }
   };
 

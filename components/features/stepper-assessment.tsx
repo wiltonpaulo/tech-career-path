@@ -81,11 +81,13 @@ export function StepperAssessment() {
     const savedStep = localStorage.getItem('assessment_step');
     const savedPhase = localStorage.getItem('assessment_phase');
     const savedUserData = localStorage.getItem('assessment_user_data');
+    const savedAssessmentId = localStorage.getItem('assessment_id');
 
     if (savedAnswers) setAnswers(JSON.parse(savedAnswers));
     if (savedStep) setCurrentStep(parseInt(savedStep));
     if (savedPhase && savedPhase !== 'testing') setPhase(savedPhase as any);
     if (savedUserData) setUserData(JSON.parse(savedUserData));
+    if (savedAssessmentId) setAssessmentId(savedAssessmentId);
   }, []);
 
   // 2. SALVAR ESTADO NO LOCALSTORAGE SEMPRE QUE MUDAR
@@ -95,8 +97,9 @@ export function StepperAssessment() {
       localStorage.setItem('assessment_step', currentStep.toString());
       localStorage.setItem('assessment_phase', phase);
       localStorage.setItem('assessment_user_data', JSON.stringify(userData));
+      if (assessmentId) localStorage.setItem('assessment_id', assessmentId);
     }
-  }, [answers, currentStep, phase, userData]);
+  }, [answers, currentStep, phase, userData, assessmentId]);
 
   // Monitorar Sessão do Supabase
   useEffect(() => {
@@ -153,6 +156,7 @@ export function StepperAssessment() {
           setFinalReport(data.report);
           setPhase('results');
           localStorage.removeItem('assessment_answers'); 
+          // Nota: Mantemos o assessment_id para permitir refresh na tela de resultados
         } else if (data.status === 'FAILED') {
           clearInterval(interval);
           setPhase('error');
@@ -192,6 +196,7 @@ export function StepperAssessment() {
       const data = await response.json();
       if (data.success) {
         setAssessmentId(data.assessmentId);
+        localStorage.setItem('assessment_id', data.assessmentId);
         setPhase('processing');
         startPolling(data.assessmentId);
       } else { setPhase('error'); }
@@ -244,6 +249,7 @@ export function StepperAssessment() {
       if (saveData.success && saveData.assessmentId) {
         savedAssessmentId = saveData.assessmentId;
         setAssessmentId(savedAssessmentId);
+        localStorage.setItem('assessment_id', saveData.assessmentId);
       }
 
       if (authMode === 'signup') {

@@ -2,6 +2,11 @@ import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
 export async function middleware(request: NextRequest) {
+  // CRITICAL: Bypass middleware completely for Inngest to preserve query params (?fnId=...)
+  if (request.nextUrl.pathname.startsWith('/api/inngest')) {
+    return NextResponse.next();
+  }
+
   let response = NextResponse.next({
     request: {
       headers: request.headers,
