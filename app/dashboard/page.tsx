@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { 
   Loader2, 
   FileText, 
@@ -12,7 +13,9 @@ import {
   ChevronRight,
   LogOut,
   Sparkles,
-  Zap
+  Zap,
+  Mail,
+  Lock
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -21,6 +24,10 @@ export default function UserDashboardPage() {
   const [assessments, setAssessments] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [user, setUser] = useState<any>(null);
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [isLoggingIn, setIsLoggingIn] = useState(false);
+  const [loginError, setLoginError] = useState<string | null>(null);
 
   useEffect(() => {
     const getData = async () => {
@@ -43,6 +50,18 @@ export default function UserDashboardPage() {
     window.location.href = '/';
   };
 
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoggingIn(true);
+    setLoginError(null);
+
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) {
+      setLoginError(error.message);
+      setIsLoggingIn(false);
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-slate-950 flex items-center justify-center">
@@ -53,12 +72,39 @@ export default function UserDashboardPage() {
 
   if (!user) {
     return (
-      <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center p-6 text-center">
-        <h1 className="text-3xl font-black text-white italic tracking-tighter uppercase mb-4 text-white">Access Denied</h1>
-        <p className="text-slate-400 mb-8">Please sign in to view your dashboard.</p>
-        <Button asChild className="bg-blue-600 hover:bg-blue-500 rounded-2xl px-8 h-14 font-black">
-          <Link href="/assessment">Start Assessment</Link>
-        </Button>
+      <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center p-6 text-center max-w-md mx-auto w-full">
+        <div className="mb-8 p-4 bg-slate-900 rounded-2xl border border-slate-800 shadow-xl inline-block">
+          <Sparkles className="w-8 h-8 text-blue-500" />
+        </div>
+        <h1 className="text-3xl font-black text-white italic tracking-tighter uppercase mb-2">Welcome Back</h1>
+        <p className="text-slate-400 mb-8 text-sm">Sign in to access your strategic roadmaps.</p>
+        
+        <Card className="w-full p-8 bg-slate-900/50 border-slate-800 backdrop-blur-sm rounded-[32px]">
+          <form onSubmit={handleLogin} className="space-y-4 text-left">
+            <div className="space-y-2">
+              <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 block">Email Address</label>
+              <div className="relative">
+                <Mail className="absolute left-4 top-3.5 w-4 h-4 text-slate-500" />
+                <Input required type="email" placeholder="name@company.com" className="bg-slate-950 border-slate-700 h-12 pl-12 rounded-xl text-white focus-visible:ring-blue-500" value={email} onChange={(e) => setEmail(e.target.value)} />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 block">Password</label>
+              <div className="relative">
+                <Lock className="absolute left-4 top-3.5 w-4 h-4 text-slate-500" />
+                <Input required type="password" placeholder="••••••••" className="bg-slate-950 border-slate-700 h-12 pl-12 rounded-xl text-white focus-visible:ring-blue-500" value={password} onChange={(e) => setPassword(e.target.value)} />
+              </div>
+            </div>
+            
+            {loginError && (
+              <p className="text-red-400 text-xs font-bold bg-red-500/10 p-3 rounded-lg border border-red-500/20 text-center animate-in fade-in">{loginError}</p>
+            )}
+
+            <Button type="submit" disabled={isLoggingIn} className="w-full bg-blue-600 hover:bg-blue-500 h-14 text-sm font-black rounded-2xl shadow-lg shadow-blue-500/20 transition-all active:scale-95">
+              {isLoggingIn ? <Loader2 className="w-5 h-5 animate-spin" /> : "Access Dashboard"}
+            </Button>
+          </form>
+        </Card>
       </div>
     );
   }
