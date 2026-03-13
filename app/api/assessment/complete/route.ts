@@ -6,7 +6,7 @@ import { NextResponse } from "next/server";
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    const { name, email, currentRole, answers, topMatches } = body;
+    const { name, email, currentRole, answers, topMatches, topMatchesScores } = body;
     
     if (!email) {
       return NextResponse.json({ error: "Missing email" }, { status: 400 });
@@ -69,6 +69,7 @@ export async function POST(req: Request) {
           name: name,
           currentRole: currentRole,
           topMatches: topMatches,
+          topMatchesScores: topMatchesScores || [],
         },
       });
       console.log(`[API] Inngest event sent successfully.`);

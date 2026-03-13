@@ -48,7 +48,7 @@ export function StepperAssessment() {
   const [userData, setUserData] = useState({ name: '', email: '', currentRole: '' });
   const [finalReport, setFinalReport] = useState('');
   const [topMatches, setTopMatches] = useState<string[]>([]);
-  const [activeTab, setActiveTab] = useState('summary');
+  const [activeTab, setActiveTab] = useState('breakdown');
 
   const pdfCaptureRef = useRef<HTMLDivElement>(null);
   // Tracks when the user naturally navigated to registration (vs returning from OAuth/email redirect).
@@ -59,6 +59,7 @@ export function StepperAssessment() {
   const progress = ((currentStep + 1) / totalQuestions) * 100;
 
   const tabs = [
+    { id: 'breakdown', title: 'Match Breakdown', icon: Star, marker: '## 0.' },
     { id: 'summary', title: 'Executive Summary', icon: Sparkles, marker: '## 1.' },
     { id: 'matrix', title: 'Match Matrix', icon: Target, marker: '## 2.' },
     { id: 'skills', title: 'Skills Gap', icon: ShieldCheck, marker: '## 3.' },
@@ -135,9 +136,12 @@ export function StepperAssessment() {
     if (!finalReport) return {};
     const sections: Record<string, string[]> = {};
     const lines = finalReport.split('\n');
-    let currentSectionId = 'summary';
+    let currentSectionId = 'breakdown';
     lines.forEach(line => {
-      const foundTab = tabs.find(t => line.trim().startsWith(t.marker));
+      // Normalize line: strip bold markers (**) and collapse any # count to ## so
+      // Gemini formatting variations (###, **## 2.**) are handled uniformly.
+      const normalized = line.trim().replace(/\*+/g, '').replace(/^#{1,6}\s*/, '## ');
+      const foundTab = tabs.find(t => normalized.startsWith(t.marker));
       if (foundTab) {
         currentSectionId = foundTab.id;
         sections[currentSectionId] = [];
@@ -185,16 +189,33 @@ export function StepperAssessment() {
     return Object.entries(scores).sort(([, a], [, b]) => b - a).slice(0, 3).map(([area]) => area);
   };
 
+  const calculateTopScores = (): { role: string; score: number }[] => {
+    const scores: Record<string, number> = {};
+    ASSESSMENT_QUESTIONS.forEach((q) => {
+      const idx = answers[q.id];
+      if (idx !== undefined) {
+        Object.entries(q.options[idx].weights).forEach(([area, weight]) => {
+          scores[area] = (scores[area] || 0) + (weight as number);
+        });
+      }
+    });
+    return Object.entries(scores)
+      .sort(([, a], [, b]) => b - a)
+      .slice(0, 3)
+      .map(([role, score]) => ({ role, score }));
+  };
+
   const handleRegistration = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     setIsSubmitting(true);
     const matches = calculateResults();
+    const topScores = calculateTopScores();
     setTopMatches(matches);
     try {
       const response = await fetch('/api/assessment/complete', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...userData, answers, topMatches: matches }),
+        body: JSON.stringify({ ...userData, answers, topMatches: matches, topMatchesScores: topScores }),
       });
       const data = await response.json();
       if (data.success) {
@@ -250,13 +271,14 @@ export function StepperAssessment() {
 
     try {
       const matches = calculateResults();
+      const topScores = calculateTopScores();
       setTopMatches(matches);
 
       // Salva o rascunho no banco
       const saveResponse = await fetch('/api/assessment/complete', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...userData, email, answers, topMatches: matches }),
+        body: JSON.stringify({ ...userData, email, answers, topMatches: matches, topMatchesScores: topScores }),
       });
       
       const saveData = await saveResponse.json();
