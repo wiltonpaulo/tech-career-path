@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { ArrowRight, BrainCircuit, LineChart, ShieldCheck, Zap, Globe, Cpu, LayoutDashboard } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -10,6 +11,7 @@ import { createClient } from '@/lib/supabase/client';
 
 export default function Home() {
   const supabase = createClient();
+  const router = useRouter();
   const [user, setUser] = useState<any>(null);
 
   useEffect(() => {
@@ -19,6 +21,17 @@ export default function Home() {
     };
     getUser();
   }, [supabase]);
+
+  // Detecta se o usuário chegou via Magic Link com um ID de assessment
+  // e redireciona para a página de resultado correta.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const assessmentId = params.get('id');
+    
+    if (assessmentId) {
+      router.push(`/assessment?id=${assessmentId}`);
+    }
+  }, [router]);
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-50 selection:bg-blue-500/30 font-sans flex flex-col">
@@ -70,6 +83,14 @@ export default function Home() {
               </Button>
             </Link>
           </div>
+
+          {!user && (
+            <div className="mt-8 animate-in fade-in slide-in-from-bottom-4 duration-1000 delay-200">
+              <p className="text-slate-500 text-sm font-medium">
+                Already have an account? <Link href="/dashboard" className="text-blue-400 hover:text-blue-300 transition-colors font-bold uppercase tracking-wider underline decoration-blue-500/30 underline-offset-4">Sign In</Link>
+              </p>
+            </div>
+          )}
         </section>
 
         {/* STATS SECTION */}
