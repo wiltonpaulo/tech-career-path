@@ -3,23 +3,27 @@
 import React, { useEffect, useState } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { 
-  Loader2, 
-  RefreshCcw, 
-  CheckCircle2, 
-  Clock, 
+import {
+  Loader2,
+  RefreshCcw,
+  CheckCircle2,
+  Clock,
   AlertCircle,
   User as UserIcon,
   Mail,
   ArrowRight,
   Database,
-  Activity
+  Activity,
+  Trash2,
+  X,
 } from 'lucide-react';
 
 export default function AdminAssessmentsPage() {
   const [assessments, setAssessments] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [retryingId, setRetryingId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
   const fetchAssessments = async () => {
     try {
@@ -52,6 +56,19 @@ export default function AdminAssessmentsPage() {
       console.error("Failed to retry");
     } finally {
       setRetryingId(null);
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    setDeletingId(id);
+    try {
+      await fetch(`/api/admin/assessments/${id}`, { method: 'DELETE' });
+      setAssessments(prev => prev.filter(a => a.id !== id));
+      setConfirmDeleteId(null);
+    } catch (error) {
+      console.error("Failed to delete");
+    } finally {
+      setDeletingId(null);
     }
   };
 
@@ -161,24 +178,48 @@ export default function AdminAssessmentsPage() {
                   </div>
                 </div>
 
-                <div className="flex items-center gap-6 self-end md:self-center">
+                <div className="flex items-center gap-3 self-end md:self-center">
                   <div className="hidden sm:block">
                     {getStatusBadge(a.status)}
                   </div>
-                  <Button 
-                    onClick={() => handleRetry(a.id)} 
+                  <Button
+                    onClick={() => handleRetry(a.id)}
                     disabled={retryingId === a.id || a.status === 'PROCESSING'}
-                    className="bg-blue-600 hover:bg-blue-500 text-white rounded-2xl h-14 px-10 font-black text-[10px] uppercase tracking-[0.2em] shadow-xl shadow-blue-500/10 hover:shadow-blue-500/20 active:scale-95 transition-all group/btn disabled:opacity-50 disabled:grayscale"
+                    className="bg-blue-600 hover:bg-blue-500 text-white rounded-2xl h-12 px-8 font-black text-[10px] uppercase tracking-[0.2em] shadow-xl shadow-blue-500/10 hover:shadow-blue-500/20 active:scale-95 transition-all group/btn disabled:opacity-50 disabled:grayscale"
                   >
                     {retryingId === a.id ? (
                       <Loader2 className="w-4 h-4 animate-spin" />
                     ) : (
                       <>
                         {a.status === 'COMPLETED' ? 'Regenerate' : 'Trigger AI'}
-                        <ArrowRight className="w-4 h-4 ml-3 group-hover/btn:translate-x-1 transition-transform" />
+                        <ArrowRight className="w-4 h-4 ml-2 group-hover/btn:translate-x-1 transition-transform" />
                       </>
                     )}
                   </Button>
+                  {confirmDeleteId === a.id ? (
+                    <div className="flex items-center gap-2">
+                      <Button
+                        onClick={() => handleDelete(a.id)}
+                        disabled={deletingId === a.id}
+                        className="h-12 px-4 rounded-2xl bg-red-600 hover:bg-red-500 text-white font-black text-[10px] uppercase tracking-wider"
+                      >
+                        {deletingId === a.id ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Confirm'}
+                      </Button>
+                      <Button
+                        onClick={() => setConfirmDeleteId(null)}
+                        className="h-12 w-12 p-0 rounded-2xl bg-slate-800 hover:bg-slate-700 text-slate-400"
+                      >
+                        <X className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  ) : (
+                    <Button
+                      onClick={() => setConfirmDeleteId(a.id)}
+                      className="h-12 w-12 p-0 rounded-2xl bg-slate-800 hover:bg-red-600/20 text-slate-500 hover:text-red-400 transition-all"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  )}
                 </div>
               </div>
               
