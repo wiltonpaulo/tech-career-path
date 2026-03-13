@@ -8,7 +8,11 @@ export const generateCareerReport = inngest.createFunction(
   { event: "assessment/completed" },
   async ({ event, step }) => {
     const { assessmentId, name, currentRole, topMatches } = event.data;
-    console.log(`[Inngest Function] Started processing for Assessment ID: ${assessmentId}, User: ${name}`);
+    
+    // Fallback: Se currentRole vier vazio ou nulo, usamos um termo genérico
+    const effectiveRole = currentRole && currentRole.trim() !== "" ? currentRole : "General Professional";
+
+    console.log(`[Inngest Function] Started processing for Assessment ID: ${assessmentId}, User: ${name}, Role: ${effectiveRole}`);
 
     // 1. Marcar como processando no banco
     await step.run("update-status-processing", async () => {
@@ -24,14 +28,14 @@ export const generateCareerReport = inngest.createFunction(
       console.log(`[Inngest Step] Generating AI Report for ${name}...`);
       const prompt = `
         Act as a Senior US Tech Career Strategist specializing in career pivots for beginners. 
-        Generate a professional "Career Integration Report" for ${name}, transitioning from "${currentRole}".
+        Generate a professional "Career Integration Report" for ${name}, transitioning from "${effectiveRole}".
         Target Roles (Top Matches): ${topMatches.join(', ')}.
 
         STRUCTURE:
         1. Executive Summary: High-level analysis of their "Professional DNA" and why these specific matches make sense based on their background.
         2. The Match Matrix: For each of the Top 3 roles, provide:
            - Match Score (%) and Stars (⭐)
-           - "Why You?": A 1-sentence strategic link between their current background and this role.
+           - "Why You?": A 1-sentence strategic link between their background ("${effectiveRole}") and this role.
            - Pivot Difficulty: (Easy/Medium/Hard) and a brief reason why.
            - AI Resilience: A score (1-10) on how resistant this role is to automation.
         3. Technical Skills Gap: A detailed analysis of "What you have" vs "What the US Market demands" for the #1 match. Include 4 specific skills with star ratings (⭐).

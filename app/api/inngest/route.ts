@@ -18,6 +18,7 @@ const inngestHandler = serve({
 
 const handler = async (req: NextRequest, context: any) => {
   console.log(`[Inngest Endpoint] Method: ${req.method} | URL: ${req.url}`);
+  console.log(`[Inngest Endpoint] Search Params: ${JSON.stringify(Object.fromEntries(req.nextUrl.searchParams))}`);
   return inngestHandler(req, context);
 };
 

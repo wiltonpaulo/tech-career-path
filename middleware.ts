@@ -2,12 +2,6 @@ import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
 export async function middleware(request: NextRequest) {
-  // CRITICAL: Retorna imediatamente se for a rota do Inngest
-  if (request.nextUrl.pathname.includes('/api/inngest')) {
-    console.log(`[Middleware] Skipping middleware for Inngest route: ${request.nextUrl.toString()}`);
-    return NextResponse.next();
-  }
-
   let response = NextResponse.next({
     request: {
       headers: request.headers,
@@ -52,6 +46,6 @@ export const config = {
      * - favicon.ico (favicon file)
      * Feel free to modify this pattern to include more paths.
      */
-    '/((?!_next/static|_next/image|favicon.ico).*)',
+    '/((?!api/inngest|_next/static|_next/image|favicon.ico).*)',
   ],
 }
