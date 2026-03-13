@@ -15,9 +15,9 @@ const inngestHandler = serve({
   ],
 });
 
-const handler = async (req: Request, ...args: any[]) => {
+const handler = async (req: Request, context: any) => {
   console.log(`[Inngest Endpoint] Method: ${req.method} | URL: ${req.url}`);
-  return inngestHandler(req, ...args);
+  return inngestHandler(req, context);
 };
 
 export { handler as GET, handler as POST, handler as PUT };
