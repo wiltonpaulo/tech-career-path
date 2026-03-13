@@ -198,6 +198,19 @@ export function StepperAssessment() {
     } catch (error) { setPhase('error'); } finally { setIsSubmitting(false); }
   };
 
+  // EFEITO PARA AUTO-SUBMISSÃO APÓS LOGIN/VALIDAÇÃO DE EMAIL
+  // Se o usuário voltar do fluxo de email e já tivermos as respostas no LocalStorage,
+  // submetemos automaticamente.
+  useEffect(() => {
+    const hasAnswers = Object.keys(answers).length > 0;
+    const isRegistrationPhase = phase === 'registration';
+    const isLoggedIn = !!session?.user;
+    
+    if (isLoggedIn && isRegistrationPhase && hasAnswers && !assessmentId && !isSubmitting) {
+      handleRegistration();
+    }
+  }, [session, phase, answers, assessmentId]); // Dependências controladas para evitar loop
+
   const handleGithubLogin = async () => {
     localStorage.setItem('assessment_phase', 'registration');
     await supabase.auth.signInWithOAuth({
@@ -210,14 +223,40 @@ export function StepperAssessment() {
     e.preventDefault();
     setError(null);
     setIsSubmitting(true);
+
+    // 1. ESTRATÉGIA SAVE-FIRST:
+    // Salvamos as respostas no banco ANTES de iniciar o fluxo de Auth.
+    // Isso gera um ID persistente que podemos passar no Magic Link.
+    let savedAssessmentId: string | null = null;
+    
     try {
+      const matches = calculateResults();
+      setTopMatches(matches);
+
+      // Chamada API para salvar rascunho/assessment
+      const saveResponse = await fetch('/api/assessment/complete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...userData, email, answers, topMatches: matches }),
+      });
+      
+      const saveData = await saveResponse.json();
+      if (saveData.success && saveData.assessmentId) {
+        savedAssessmentId = saveData.assessmentId;
+        setAssessmentId(savedAssessmentId); // Atualiza estado local para evitar duplicação
+      }
+
       if (authMode === 'signup') {
         const { error: err } = await supabase.auth.signUp({
           email,
           password,
           options: {
             data: { full_name: userData.name },
-            emailRedirectTo: window.location.href
+            // AQUI ESTÁ O SEGREDO: Anexamos o ID no link de retorno
+            // Se o usuário abrir no celular, o ID estará na URL e o relatório carregará.
+            emailRedirectTo: savedAssessmentId 
+              ? `${window.location.origin}?id=${savedAssessmentId}`
+              : window.location.href
           }
         });
         if (err) throw err;
@@ -225,6 +264,12 @@ export function StepperAssessment() {
       } else {
         const { error: err } = await supabase.auth.signInWithPassword({ email, password });
         if (err) throw err;
+        
+        // Se for login por senha e já salvamos, vamos direto para o processamento
+        if (savedAssessmentId) {
+          setPhase('processing');
+          startPolling(savedAssessmentId);
+        }
       }
     } catch (err: any) { setError(err.message); } finally { setIsSubmitting(false); }
   };
