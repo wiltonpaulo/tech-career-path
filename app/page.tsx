@@ -13,6 +13,7 @@ export default function Home() {
   const supabase = createClient();
   const router = useRouter();
   const [user, setUser] = useState<any>(null);
+  const [isRedirecting, setIsRedirecting] = useState(false);
 
   useEffect(() => {
     const getUser = async () => {
@@ -29,9 +30,21 @@ export default function Home() {
     const assessmentId = params.get('id');
     
     if (assessmentId) {
+      setIsRedirecting(true);
       router.push(`/assessment?id=${assessmentId}`);
     }
   }, [router]);
+
+  if (isRedirecting) {
+    return (
+      <div className="min-h-screen bg-slate-950 flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
+          <p className="text-slate-400 text-sm font-medium animate-pulse">Loading your report...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-50 selection:bg-blue-500/30 font-sans flex flex-col">
