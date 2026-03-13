@@ -21,6 +21,24 @@ export async function POST(req: Request) {
       },
     });
 
+    // Checar por um assessment recente e não finalizado para evitar duplicidade
+    const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
+    const existingAssessment = await prisma.assessment.findFirst({
+      where: {
+        userId: user.id,
+        status: { in: ['PENDING', 'PROCESSING'] },
+        createdAt: { gte: fiveMinutesAgo },
+      },
+      orderBy: {
+        createdAt: 'desc',
+      },
+    });
+
+    if (existingAssessment) {
+      console.log(`[API] Requisição de assessment duplicada para o usuário ${user.id}. Retornando assessment ID existente: ${existingAssessment.id}`);
+      return NextResponse.json({ success: true, assessmentId: existingAssessment.id });
+    }
+
     // 2. Salvar o Assessment no banco
     const assessment = await prisma.assessment.create({
       data: {
