@@ -351,11 +351,15 @@ export function StepperAssessment() {
 
       const stripMarkdown = (text: string) =>
         text
+          .replace(/⭐/g, '+')           // replace unicode stars first (Helvetica compat)
           .replace(/\*\*(.*?)\*\*/g, '$1')
           .replace(/\*(.*?)\*/g, '$1')
           .replace(/\[(.*?)\]\(.*?\)/g, '$1')
-          .replace(/^#+\s*/, '')
-          .replace(/⭐/g, '★');
+          .replace(/^#+\s*/, '');
+
+      // ASCII bar for ratings: e.g. 4/5 → "++++ -"
+      const asciiRating = (filled: number, total = 5) =>
+        '+'.repeat(filled) + ' ' + '-'.repeat(total - filled);
 
       // ── COVER ──────────────────────────────────────────────────────────────
       pdf.setFillColor(15, 23, 42);
@@ -495,12 +499,25 @@ export function StepperAssessment() {
           }
         };
 
-        for (const line of sectionLines) {
+        // helpers for line classification
+        const isPdfBullet = (l: string) =>
+          /^[\s]{0,4}[-*•]\s/.test(l) || l.trim() === '•';
+
+        const isSubheading = (l: string, next: string) => {
+          const t = l.trim();
+          if (!t || t.length > 55 || t.length < 2) return false;
+          if (/^[-*#•\d|]/.test(t)) return false;
+          if (t.endsWith('.') || t.split(' ').length > 8) return false;
+          const nextTrimmed = next.trim();
+          return nextTrimmed.startsWith('-') || nextTrimmed.startsWith('*') || nextTrimmed === '';
+        };
+
+        for (let li = 0; li < sectionLines.length; li++) {
+          const line = sectionLines[li];
+          const nextLine = sectionLines[li + 1] || '';
+
           // empty line
-          if (!line.trim()) {
-            y += 3;
-            continue;
-          }
+          if (!line.trim()) { y += 3; continue; }
 
           // table separator — skip
           if (/^\|[-| :]+\|$/.test(line.trim())) continue;
@@ -518,20 +535,18 @@ export function StepperAssessment() {
             pdf.setFontSize(8);
             pdf.setFont('helvetica', 'normal');
             pdf.setTextColor(71, 85, 105);
-            cells.forEach((cell, ci) => {
-              pdf.text(cell.substring(0, 28), ml + ci * colW + 2, y);
-            });
+            cells.forEach((cell, ci) => { pdf.text(cell.substring(0, 28), ml + ci * colW + 2, y); });
             y += 9;
             continue;
           }
 
-          // h3 heading
+          // explicit h3/h2 heading
           if (line.startsWith('### ') || line.startsWith('## ')) {
             const heading = stripMarkdown(line.replace(/^#+\s*/, ''));
             const wrapped = pdf.splitTextToSize(heading, cw);
             checkNewPage(wrapped.length * 6 + 8);
             y += 4;
-            pdf.setFontSize(12);
+            pdf.setFontSize(11);
             pdf.setFont('helvetica', 'bold');
             pdf.setTextColor(15, 23, 42);
             pdf.text(wrapped, ml, y);
@@ -539,26 +554,49 @@ export function StepperAssessment() {
             continue;
           }
 
-          // bullet list — handles `- `, `* `, `• `, and standalone `•` + next line
-          const isPdfBullet = (l: string) =>
-            l.startsWith('- ') || l.startsWith('* ') || l.startsWith('• ') || l.trim() === '•';
+          // implicit sub-heading: short standalone line before a bullet block
+          if (isSubheading(line, nextLine)) {
+            const heading = stripMarkdown(line.trim());
+            checkNewPage(8 + 4);
+            y += 4;
+            pdf.setFontSize(11);
+            pdf.setFont('helvetica', 'bold');
+            pdf.setTextColor(37, 99, 235);
+            pdf.text(heading, ml, y);
+            y += 8;
+            continue;
+          }
 
+          // star rating line (contains ⭐)
+          if (line.includes('⭐')) {
+            const starCount = (line.match(/⭐/g) || []).length;
+            const label = stripMarkdown(line.replace(/^[-•*]\s*/, '').split(':')[0]);
+            checkNewPage(LH + 2);
+            pdf.setFontSize(10);
+            pdf.setFont('helvetica', 'bold');
+            pdf.setTextColor(30, 41, 59);
+            pdf.text(label, ml, y);
+            pdf.setFont('helvetica', 'normal');
+            pdf.setTextColor(180, 130, 0);
+            pdf.text(asciiRating(starCount), W - mr, y, { align: 'right' });
+            y += LH + 2;
+            continue;
+          }
+
+          // bullet — top-level and indented (` - `)
           if (isPdfBullet(line)) {
-            let text: string;
-            if (line.trim() === '•') {
-              text = '';
-            } else {
-              text = stripMarkdown(line.replace(/^[-*•]\s+/, ''));
-            }
-            if (!text.trim()) { continue; }
-            const wrapped = pdf.splitTextToSize(text, cw - 8);
+            const isIndented = /^\s+/.test(line);
+            const indent = isIndented ? 10 : 4;
+            const text = stripMarkdown(line.replace(/^[\s]*[-*•]\s+/, ''));
+            if (!text.trim()) continue;
+            const wrapped = pdf.splitTextToSize(text, cw - indent - 4);
             checkNewPage(wrapped.length * LH + 2);
             pdf.setFontSize(10);
             pdf.setFont('helvetica', 'normal');
             pdf.setTextColor(37, 99, 235);
-            pdf.text('•', ml + 1, y);
+            pdf.text(isIndented ? '-' : 'o', ml + indent - 3, y);
             pdf.setTextColor(55, 65, 81);
-            pdf.text(wrapped, ml + 7, y);
+            pdf.text(wrapped, ml + indent + 2, y);
             y += wrapped.length * LH + 2;
             continue;
           }
@@ -573,21 +611,6 @@ export function StepperAssessment() {
             pdf.setTextColor(55, 65, 81);
             pdf.text(wrapped, ml + 4, y);
             y += wrapped.length * LH + 2;
-            continue;
-          }
-
-          // star rating
-          if (line.includes('⭐')) {
-            const starCount = (line.match(/⭐/g) || []).length;
-            const label = stripMarkdown(line.replace(/^- /, '').split(':')[0]);
-            checkNewPage(LH + 2);
-            pdf.setFontSize(10);
-            pdf.setFont('helvetica', 'bold');
-            pdf.setTextColor(30, 41, 59);
-            pdf.text(label, ml, y);
-            pdf.setTextColor(234, 179, 8);
-            pdf.text('★'.repeat(starCount) + '☆'.repeat(5 - starCount), W - mr, y, { align: 'right' });
-            y += LH + 2;
             continue;
           }
 
