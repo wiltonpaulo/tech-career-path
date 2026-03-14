@@ -543,11 +543,11 @@ export function StepperAssessment() {
           // explicit h3/h2 heading
           if (line.startsWith('### ') || line.startsWith('## ')) {
             const heading = stripMarkdown(line.replace(/^#+\s*/, ''));
+            pdf.setFontSize(11);
+            pdf.setFont('helvetica', 'bold');
             const wrapped = pdf.splitTextToSize(heading, cw);
             checkNewPage(wrapped.length * 6 + 8);
             y += 4;
-            pdf.setFontSize(11);
-            pdf.setFont('helvetica', 'bold');
             pdf.setTextColor(15, 23, 42);
             pdf.text(wrapped, ml, y);
             y += wrapped.length * 6 + 3;
@@ -589,10 +589,10 @@ export function StepperAssessment() {
             const indent = isIndented ? 10 : 4;
             const text = stripMarkdown(line.replace(/^[\s]*[-*•]\s+/, ''));
             if (!text.trim()) continue;
-            const wrapped = pdf.splitTextToSize(text, cw - indent - 4);
-            checkNewPage(wrapped.length * LH + 2);
             pdf.setFontSize(10);
             pdf.setFont('helvetica', 'normal');
+            const wrapped = pdf.splitTextToSize(text, cw - indent - 4);
+            checkNewPage(wrapped.length * LH + 2);
             pdf.setTextColor(37, 99, 235);
             pdf.text(isIndented ? '-' : 'o', ml + indent - 3, y);
             pdf.setTextColor(55, 65, 81);
@@ -604,10 +604,10 @@ export function StepperAssessment() {
           // numbered list
           if (/^\d+\.\s/.test(line)) {
             const text = stripMarkdown(line);
-            const wrapped = pdf.splitTextToSize(text, cw - 8);
-            checkNewPage(wrapped.length * LH + 2);
             pdf.setFontSize(10);
             pdf.setFont('helvetica', 'normal');
+            const wrapped = pdf.splitTextToSize(text, cw - 8);
+            checkNewPage(wrapped.length * LH + 2);
             pdf.setTextColor(55, 65, 81);
             pdf.text(wrapped, ml + 4, y);
             y += wrapped.length * LH + 2;
@@ -617,10 +617,10 @@ export function StepperAssessment() {
           // regular paragraph
           const cleanLine = stripMarkdown(line);
           if (!cleanLine.trim()) { y += 2; continue; }
-          const wrapped = pdf.splitTextToSize(cleanLine, cw);
-          checkNewPage(wrapped.length * LH + 3);
           pdf.setFontSize(10);
           pdf.setFont('helvetica', 'normal');
+          const wrapped = pdf.splitTextToSize(cleanLine, cw);
+          checkNewPage(wrapped.length * LH + 3);
           pdf.setTextColor(55, 65, 81);
           pdf.text(wrapped, ml, y);
           y += wrapped.length * LH + 3;
